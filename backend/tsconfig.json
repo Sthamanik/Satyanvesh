@@ -24,6 +24,6 @@
     }
   },
 
-  "include": ["src/**/*.ts"], // Files to compile
+  "include": ["src/**/*.ts", "src/types/**/*.d.ts"], // Files to compile
   "exclude": ["node_modules", "dist"] // Ignored during compilation
 }
