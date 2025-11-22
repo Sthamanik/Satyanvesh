@@ -28,7 +28,7 @@ const CourtSchema = new Schema<ICourt>(
       type: String,
       slug: "name",
       unique: true,
-      slugPaddingSize: 2,
+      slugPaddingSize: 4,
       index: true,
     },
     code: {

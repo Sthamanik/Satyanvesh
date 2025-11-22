@@ -1,10 +1,12 @@
 import mongoose, { Document, Schema } from "mongoose";
 import slug from "mongoose-slug-updater";
+import bcrypt from "bcryptjs";
 
 mongoose.plugin(slug as any);
 
 export interface IUser extends Document {
   username: string;
+  slug: string;
   email: string;
   password: string;
   fullName: string;
@@ -14,6 +16,7 @@ export interface IUser extends Document {
   barCouncilId: string | null;
   isVerified: boolean;
   refreshToken: string | null;
+  isPasswordCorrect(password: string): Promise<boolean>;
 }
 
 const UserSchema = new Schema<IUser>(
@@ -26,6 +29,13 @@ const UserSchema = new Schema<IUser>(
       lowercase: true,
       minLength: 3,
       maxLength: 30,
+      index: true,
+    },
+    slug: {
+      type: String,
+      slug: "username",
+      unique: true,
+      slugPaddingSize: 4,
       index: true,
     },
     email: {
@@ -79,6 +89,25 @@ const UserSchema = new Schema<IUser>(
     timestamps: true,
   }
 );
+
+// Hash password before saving
+UserSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+
+  try {
+    this.password = await bcrypt.hash(this.password, 10);
+    next();
+  } catch (error: any) {
+    next(error);
+  }
+});
+
+// Method to compare password
+UserSchema.methods.isPasswordCorrect = async function (
+  password: string
+): Promise<boolean> {
+  return await bcrypt.compare(password, this.password);
+};
 
 const User = mongoose.model<IUser>("User", UserSchema);
 export default User;
