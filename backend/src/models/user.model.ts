@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 
 mongoose.plugin(slug as any);
 
-export interface IUser extends Document {
+export interface IUser{
   username: string;
   slug: string;
   email: string;
