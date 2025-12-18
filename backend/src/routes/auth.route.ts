@@ -6,15 +6,15 @@ import {
   refreshAccessToken,
   getCurrentUser,
   changePassword,
-} from "@controllers/auth.controller";
-import { validate } from "@middlewares/validate.middleware";
-import { verifyJWT } from "@middlewares/auth.middleware";
+} from "@controllers/auth.controller.js";
+import { validate } from "@middlewares/validate.middleware.js";
+import { verifyJWT } from "@middlewares/auth.middleware.js";
 import {
   registerSchema,
   loginSchema,
   changePasswordSchema,
   refreshTokenSchema,
-} from "@validations/auth.validation";
+} from "@validations/auth.validation.js";
 
 const router = Router();
 
