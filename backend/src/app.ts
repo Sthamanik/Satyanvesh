@@ -17,15 +17,18 @@ import authRoute from '@routes/auth.route.js';
 import userRoute from '@routes/user.route.js';
 import courtRoute from '@routes/court.route.js';
 import caseTypeRoute from '@routes/caseType.route.js';
+import caseRoute from '@routes/case.routes.js';
+import advocateRoute from '@routes/advocate.route.js';
+import hearingRoute from '@routes/hearing.route.js';
 
 // route initialization
 app.use('/api/v1/auth', authRoute);
 app.use('/api/v1/users', userRoute);
 app.use('/api/v1/courts', courtRoute);
 app.use('/api/v1/case-types', caseTypeRoute);
-
-// route initialization
-
+app.use('/api/v1/cases', caseRoute);
+app.use('/api/v1/advocates', advocateRoute);
+app.use('/api/v1/hearings', hearingRoute);
 
 // error handling middleware
 app.use( errorHandler as any ) 
