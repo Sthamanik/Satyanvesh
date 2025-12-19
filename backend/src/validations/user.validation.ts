@@ -77,3 +77,9 @@ export const getAllUsersSchema = z.object({
     limit: z.string().regex(/^\d+$/).optional().default("10"),
   }),
 });
+
+export const updateAvatarSchema = z.object({
+  params: z.object({
+    id: z.string().min(1, "User ID is required"),
+  }),
+});

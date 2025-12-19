@@ -10,6 +10,8 @@ import {
   deleteUser,
   getUsersByRole,
   getUserStatistics,
+  updateAvatar,
+  removeAvatar
 } from "@controllers/user.controller.js";
 import { validate } from "@middlewares/validate.middleware.js";
 import { verifyJWT, authorizeRoles } from "@middlewares/auth.middleware.js";
@@ -22,7 +24,9 @@ import {
   updateUserRoleSchema,
   verifyUserSchema,
   getAllUsersSchema,
+  updateAvatarSchema
 } from "@validations/user.validation.js";
+import { avatarUpload } from "@middlewares/avatarUpload.middleware";
 
 const router = Router();
 
@@ -39,6 +43,19 @@ router.use(verifyJWT);
 router.get("/", validate(getAllUsersSchema), getAllUsers);
 
 router.patch("/:id", validate(updateUserSchema), updateUser);
+
+router.patch(
+  "/:id/avatar",
+  avatarUpload.single("avatar"),
+  validate(updateAvatarSchema),
+  updateAvatar
+);
+
+router.delete(
+  "/:id/avatar",
+  validate(updateAvatarSchema),
+  removeAvatar
+);
 
 // Admin only routes
 router.use(authorizeRoles("admin"));

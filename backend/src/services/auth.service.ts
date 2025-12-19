@@ -1,5 +1,6 @@
 import User from "@models/user.model.js";
 import { ApiError } from "@utils/apiError.util.js";
+import { uploadOnCloudinary } from "@utils/cloudinary.util.js";
 import {
   generateAccessToken,
   generateRefreshToken,
@@ -14,6 +15,7 @@ interface RegisterData {
   phone?: string;
   role?: string;
   barCouncilId?: string;
+  avatarPath?: string;
 }
 
 interface LoginData {
@@ -24,11 +26,21 @@ interface LoginData {
 class AuthService {
   // Register new user
   async register(data: RegisterData) {
-    const { username, email, password, fullName, phone, role, barCouncilId } =
-      data;
+    const {
+      username,
+      email,
+      password,
+      fullName,
+      phone,
+      role,
+      barCouncilId,
+      avatarPath,
+    } = data;
 
     // Check if user exists
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    const existingUser = await User.findOne({
+      $or: [{ email }, { username }],
+    });
     if (existingUser) {
       throw new ApiError(409, "User with email or username already exists");
     }
@@ -36,6 +48,15 @@ class AuthService {
     // Validate barCouncilId for lawyers
     if (role === "lawyer" && !barCouncilId) {
       throw new ApiError(400, "Bar Council ID is required for lawyers");
+    }
+
+    // Upload avatar if provided
+    let avatarUrl = null;
+    if (avatarPath) {
+      const uploadResult = await uploadOnCloudinary(avatarPath);
+      if (uploadResult) {
+        avatarUrl = uploadResult.secure_url;
+      }
     }
 
     // Create user
@@ -47,6 +68,7 @@ class AuthService {
       phone,
       role,
       barCouncilId,
+      avatar: avatarUrl, // ADD THIS
     });
 
     // Generate tokens
@@ -58,9 +80,9 @@ class AuthService {
     await user.save({ validateBeforeSave: false });
 
     // Remove sensitive data
-    const userResponse = await User.findById(user._id).select(
-      "-password -refreshToken"
-    );
+    const userResponse = await User
+      .findById(user._id)
+      .select("-password -refreshToken");
 
     return {
       user: userResponse,

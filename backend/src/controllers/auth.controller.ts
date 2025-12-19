@@ -5,7 +5,10 @@ import AuthService from "@services/auth.service.js";
 
 // Register user
 export const register = asyncHandler(async (req: Request, res: Response) => {
-  const data = await AuthService.register(req.body);
+  const data = await AuthService.register({
+    ...req.body,
+    avatarPath: req.file?.path, 
+  });
 
   // Set cookies
   const cookieOptions = {

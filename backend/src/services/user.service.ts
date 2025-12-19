@@ -1,5 +1,9 @@
 import User from "@models/user.model.js";
 import { ApiError } from "@utils/apiError.util.js";
+import {
+  uploadOnCloudinary,
+  deleteFromCloudinary,
+} from "@utils/cloudinary.util.js";
 
 interface CreateUserData {
   username: string;
@@ -206,6 +210,64 @@ class UserService {
       unverifiedUsers,
       usersByRole,
     };
+  }
+
+  // Update user avatar
+  async updateAvatar(userId: string, filePath: string) {
+    // Get user to check if old avatar exists
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    // Upload new avatar to Cloudinary
+    const uploadResult = await uploadOnCloudinary(filePath);
+    if (!uploadResult) {
+      throw new ApiError(500, "Failed to upload avatar to cloud storage");
+    }
+
+    // Delete old avatar from Cloudinary if exists
+    if (user.avatar) {
+      // Extract publicId from URL
+      const urlParts = user.avatar.split("/");
+      const publicIdWithExt = urlParts[urlParts.length - 1];
+      const publicId = "judiciary-documents/" + publicIdWithExt.split(".")[0];
+      await deleteFromCloudinary(publicId);
+    }
+
+    // Update user with new avatar URL
+    const updatedUser = await User
+      .findByIdAndUpdate(
+        userId,
+        { avatar: uploadResult.secure_url },
+        { new: true }
+      )
+      .select("-password -refreshToken");
+
+    return updatedUser;
+  }
+
+  // Remove user avatar
+  async removeAvatar(userId: string) {
+    const user = await User.findById(userId);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    // Delete from Cloudinary if exists
+    if (user.avatar) {
+      const urlParts = user.avatar.split("/");
+      const publicIdWithExt = urlParts[urlParts.length - 1];
+      const publicId = "judiciary-documents/" + publicIdWithExt.split(".")[0];
+      await deleteFromCloudinary(publicId);
+    }
+
+    // Remove avatar from user
+    const updatedUser = await User
+      .findByIdAndUpdate(userId, { avatar: null }, { new: true })
+      .select("-password -refreshToken");
+
+    return updatedUser;
   }
 }
 

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { asyncHandler } from "@utils/asyncHandler.util.js";
 import { ApiResponse } from "@utils/apiResponse.util.js";
 import UserService from "@services/user.service.js";
+import { ApiError } from "@utils/apiError.util";
 
 // Create user (admin only)
 export const createUser = asyncHandler(async (req: Request, res: Response) => {
@@ -94,3 +95,21 @@ export const getUserStatistics = asyncHandler(
       );
   }
 );
+
+// Update avatar
+export const updateAvatar = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.file) {
+    throw new ApiError(400, "Avatar file is required");
+  }
+
+  const user = await UserService.updateAvatar(req.params.id, req.file.path);
+
+  res.status(200).json(new ApiResponse(200, user, "Avatar updated successfully"));
+});
+
+// Remove avatar
+export const removeAvatar = asyncHandler(async (req: Request, res: Response) => {
+  const user = await UserService.removeAvatar(req.params.id);
+
+  res.status(200).json(new ApiResponse(200, user, "Avatar removed successfully"));
+});

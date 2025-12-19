@@ -15,11 +15,17 @@ import {
   changePasswordSchema,
   refreshTokenSchema,
 } from "@validations/auth.validation.js";
+import { avatarUpload } from "@middlewares/avatarUpload.middleware.js";
 
 const router = Router();
 
 // Public routes
-router.post("/register", validate(registerSchema), register);
+router.post(
+  "/register",
+  avatarUpload.single("avatar"),
+  validate(registerSchema),
+  register
+);
 router.post("/login", validate(loginSchema), login);
 router.post("/refresh-token", validate(refreshTokenSchema), refreshAccessToken);
 
