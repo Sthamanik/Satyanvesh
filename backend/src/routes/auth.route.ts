@@ -16,17 +16,19 @@ import {
   refreshTokenSchema,
 } from "@validations/auth.validation.js";
 import { avatarUpload } from "@middlewares/avatarUpload.middleware.js";
+import { authLimiter } from "@middlewares/rateLimiter.middleware";
 
 const router = Router();
 
 // Public routes
 router.post(
   "/register",
+  authLimiter,
   avatarUpload.single("avatar"),
   validate(registerSchema),
   register
 );
-router.post("/login", validate(loginSchema), login);
+router.post("/login", authLimiter, validate(loginSchema), login);
 router.post("/refresh-token", validate(refreshTokenSchema), refreshAccessToken);
 
 // Protected routes
@@ -35,6 +37,7 @@ router.post("/logout", logout);
 router.get("/me", getCurrentUser);
 router.post(
   "/change-password",
+  authLimiter,
   validate(changePasswordSchema),
   changePassword
 );

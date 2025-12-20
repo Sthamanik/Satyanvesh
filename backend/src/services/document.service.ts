@@ -1,11 +1,14 @@
 import documentModel from "@models/document.model.js";
 import caseModel from "@models/case.model.js";
 import hearingModel from "@models/hearing.model.js";
+import userModel from "@models/user.model.js";
+import casePartyModel from "@models/caseParty.model.js";
 import { ApiError } from "@utils/apiError.util.js";
 import {
   uploadOnCloudinary,
   deleteFromCloudinary,
 } from "@utils/cloudinary.util.js";
+import EmailService from "@services/email.service.js";
 
 interface UploadDocumentData {
   caseId: string;
@@ -67,10 +70,15 @@ class DocumentService {
     } = data;
 
     // Verify case exists
-    const caseData = await caseModel.findById(caseId);
+    const caseData = await caseModel
+      .findById(caseId)
+      .populate("filedBy", "email fullName");
     if (!caseData) {
       throw new ApiError(404, "Case not found");
     }
+
+    // Get uploader info
+    const uploader = await userModel.findById(uploadedBy).select("fullName");
 
     // If hearingId provided, verify hearing exists
     if (hearingId) {
@@ -102,6 +110,63 @@ class DocumentService {
       isConfidential: isConfidential !== undefined ? isConfidential : false,
       isPublic: isPublic !== undefined ? isPublic : true,
     });
+
+    // Send email notifications (only if document is not confidential)
+    if (!isConfidential) {
+      // Send to the person who filed the case
+      if (caseData.filedBy && (caseData.filedBy as any).email) {
+        EmailService.sendDocumentUploadedNotification(
+          (caseData.filedBy as any).email,
+          (caseData.filedBy as any).fullName,
+          caseData.caseNumber,
+          caseData.title,
+          title,
+          type,
+          uploader?.fullName || "Unknown"
+        ).catch((err) =>
+          console.error("Failed to send document notification:", err)
+        );
+      }
+
+      // Get all parties involved in the case
+      const parties = await casePartyModel
+        .find({ caseId })
+        .populate("userId", "email fullName");
+
+      for (const party of parties) {
+        // Send email to registered users
+        if (party.userId && (party.userId as any).email) {
+          EmailService.sendDocumentUploadedNotification(
+            (party.userId as any).email,
+            (party.userId as any).fullName,
+            caseData.caseNumber,
+            caseData.title,
+            title,
+            type,
+            uploader?.fullName || "Unknown"
+          ).catch((err) =>
+            console.error("Failed to send document notification to party:", err)
+          );
+        }
+        // Send email to external parties with email
+        else if (party.email) {
+          EmailService.sendDocumentUploadedNotification(
+            party.email,
+            party.name,
+            caseData.caseNumber,
+            caseData.title,
+            title,
+            type,
+            uploader?.fullName || "Unknown"
+          ).catch((err) =>
+            console.error(
+              "Failed to send document notification to external party:",
+              err
+            )
+          );
+        }
+      }
+    }
 
     // Populate references
     const populatedDocument = await documentModel

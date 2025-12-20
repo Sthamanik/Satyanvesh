@@ -1,7 +1,9 @@
 import hearingModel from "@models/hearing.model.js";
 import caseModel from "@models/case.model.js";
+import casePartyModel from "@models/caseParty.model.js";
 import userModel from "@models/user.model.js";
 import { ApiError } from "@utils/apiError.util.js";
+import EmailService from "./email.service.js";
 
 interface CreateHearingData {
   caseId: string;
@@ -40,12 +42,84 @@ interface GetUpcomingHearingsQuery {
 }
 
 class HearingService {
+  // Helper method to send hearing notifications
+  private async sendHearingNotifications(
+    caseData: any,
+    hearingDate: Date,
+    hearingTime: string,
+    courtName: string,
+    courtRoom?: string
+  ) {
+    // Send to the person who filed the case
+    if (caseData.filedBy && caseData.filedBy.email) {
+      EmailService.sendHearingReminder(
+        caseData.filedBy.email,
+        caseData.filedBy.fullName,
+        caseData.caseNumber,
+        caseData.title,
+        hearingDate,
+        hearingTime,
+        courtName,
+        courtRoom
+      ).catch((err) => console.error("Failed to send hearing email:", err));
+    }
+
+    // Get all parties involved in the case
+    const parties = await casePartyModel
+      .find({ caseId: caseData._id })
+      .populate("userId", "email fullName");
+
+    for (const party of parties) {
+      // Send email to registered users
+      if (party.userId && (party.userId as any).email) {
+        EmailService.sendHearingReminder(
+          (party.userId as any).email,
+          (party.userId as any).fullName,
+          caseData.caseNumber,
+          caseData.title,
+          hearingDate,
+          hearingTime,
+          courtName,
+          courtRoom
+        ).catch((err) =>
+          console.error("Failed to send hearing email to party:", err)
+        );
+      }
+      // Send email to external parties with email
+      else if (party.email) {
+        EmailService.sendHearingReminder(
+          party.email,
+          party.name,
+          caseData.caseNumber,
+          caseData.title,
+          hearingDate,
+          hearingTime,
+          courtName,
+          courtRoom
+        ).catch((err) =>
+          console.error("Failed to send hearing email to external party:", err)
+        );
+      }
+    }
+  }
+
   // Create hearing
   async createHearing(data: CreateHearingData) {
-    const { caseId, hearingNumber, hearingDate, hearingTime, judgeId, courtRoom, purpose } = data;
+    const {
+      caseId,
+      hearingNumber,
+      hearingDate,
+      hearingTime,
+      judgeId,
+      courtRoom,
+      purpose,
+    } = data;
 
     // Verify case exists
-    const caseData = await caseModel.findById(caseId);
+    const caseData = await caseModel
+      .findById(caseId)
+      .populate("courtId", "name")
+      .populate("filedBy", "email fullName");
     if (!caseData) {
       throw new ApiError(404, "Case not found");
     }
@@ -75,6 +149,15 @@ class HearingService {
       $inc: { hearingCount: 1 },
       nextHearingDate: hearingDate,
     });
+
+    // Send hearing notification emails
+    await this.sendHearingNotifications(
+      caseData,
+      hearingDate,
+      hearingTime,
+      (caseData.courtId as any).name,
+      courtRoom
+    );
 
     // Populate references
     const populatedHearing = await hearingModel
@@ -135,7 +218,9 @@ class HearingService {
 
     // Filter by court if courtId provided
     if (courtId) {
-      hearings = hearings.filter((hearing: any) => hearing.caseId?.courtId?.toString() === courtId);
+      hearings = hearings.filter(
+        (hearing: any) => hearing.caseId?.courtId?.toString() === courtId
+      );
     }
 
     return hearings;
@@ -178,7 +263,11 @@ class HearingService {
   // Update hearing
   async updateHearing(hearingId: string, data: UpdateHearingData) {
     const hearing = await hearingModel
-      .findByIdAndUpdate(hearingId, { $set: data }, { new: true, runValidators: true })
+      .findByIdAndUpdate(
+        hearingId,
+        { $set: data },
+        { new: true, runValidators: true }
+      )
       .populate("caseId", "caseNumber title status")
       .populate("judgeId", "fullName username email");
 
@@ -193,25 +282,52 @@ class HearingService {
   async updateHearingStatus(hearingId: string, data: UpdateHearingStatusData) {
     const { status, notes, nextHearingDate, adjournmentReason } = data;
 
-    const hearing = await hearingModel
-      .findByIdAndUpdate(
-        hearingId,
-        { $set: { status, notes, nextHearingDate, adjournmentReason } },
-        { new: true, runValidators: true }
-      )
-      .populate("caseId", "caseNumber title status")
-      .populate("judgeId", "fullName username email");
+    const hearing = await hearingModel.findById(hearingId).populate({
+      path: "caseId",
+      populate: [
+        { path: "courtId", select: "name" },
+        { path: "filedBy", select: "email fullName" },
+      ],
+    });
 
     if (!hearing) {
       throw new ApiError(404, "Hearing not found");
     }
 
+    // Update hearing
+    hearing.status = status;
+    if (notes) hearing.notes = notes;
+    if (nextHearingDate) hearing.nextHearingDate = nextHearingDate;
+    if (adjournmentReason) hearing.adjournmentReason = adjournmentReason;
+    await hearing.save();
+
     // Update case next hearing date if provided
     if (nextHearingDate && hearing.caseId) {
-      await caseModel.findByIdAndUpdate((hearing.caseId as any)._id, { nextHearingDate });
+      await caseModel.findByIdAndUpdate((hearing.caseId as any)._id, {
+        nextHearingDate,
+      });
+
+      // Send notification about adjourned hearing with new date
+      if (status === "adjourned") {
+        const caseData = hearing.caseId as any;
+        const courtRoom = hearing.courtRoom ?? "Default court room";
+        await this.sendHearingNotifications(
+          caseData,
+          nextHearingDate,
+          hearing.hearingTime,
+          caseData.courtId?.name || "Court",
+          courtRoom
+        );
+      }
     }
 
-    return hearing;
+    // Populate for response
+    const updatedHearing = await hearingModel
+      .findById(hearingId)
+      .populate("caseId", "caseNumber title status")
+      .populate("judgeId", "fullName username email");
+
+    return updatedHearing;
   }
 
   // Delete hearing
@@ -223,7 +339,9 @@ class HearingService {
     }
 
     // Decrement case hearing count
-    await caseModel.findByIdAndUpdate(hearing.caseId, { $inc: { hearingCount: -1 } });
+    await caseModel.findByIdAndUpdate(hearing.caseId, {
+      $inc: { hearingCount: -1 },
+    });
 
     return null;
   }

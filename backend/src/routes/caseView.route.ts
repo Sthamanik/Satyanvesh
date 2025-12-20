@@ -16,15 +16,16 @@ import {
   getCaseViewAnalyticsSchema,
   getTrendingCasesSchema,
 } from "@validations/caseView.validation.js";
+import { readLimiter, viewTrackingLimiter } from "@middlewares/rateLimiter.middleware";
 
 const router = Router();
 
 // Public routes (optional authentication for tracking user)
-router.post("/track", validate(trackCaseViewSchema), trackCaseView);
+router.post("/track", viewTrackingLimiter, validate(trackCaseViewSchema), trackCaseView);
 
-router.get("/trending", validate(getTrendingCasesSchema), getTrendingCases);
+router.get("/trending", readLimiter, validate(getTrendingCasesSchema), getTrendingCases);
 
-router.get("/most-viewed", getMostViewedCases);
+router.get("/most-viewed", readLimiter, getMostViewedCases);
 
 // Authenticated routes
 router.use(verifyJWT);

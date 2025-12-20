@@ -20,25 +20,27 @@ import {
   deleteDocumentSchema,
   getCaseDocumentsSchema,
 } from "@validations/document.validation.js";
+import { readLimiter, uploadLimiter } from "@middlewares/rateLimiter.middleware";
 
 const router = Router();
 
-// Public routes
-router.get("/case/:caseId", validate(getCaseDocumentsSchema), getCaseDocuments);
+// Public routes with route limiter
+router.get("/case/:caseId", readLimiter, validate(getCaseDocumentsSchema), getCaseDocuments);
 
-router.get("/case/:caseId/public", getPublicDocuments);
+router.get("/case/:caseId/public", readLimiter, getPublicDocuments);
 
-router.get("/case/:caseId/type/:type", getDocumentsByType);
+router.get("/case/:caseId/type/:type", readLimiter, getDocumentsByType);
 
-router.get("/hearing/:hearingId", getHearingDocuments);
+router.get("/hearing/:hearingId", readLimiter, getHearingDocuments);
 
-router.get("/:id", validate(getDocumentByIdSchema), getDocumentById);
+router.get("/:id", readLimiter, validate(getDocumentByIdSchema), getDocumentById);
 
 // Admin/Judge/Clerk/Lawyer routes
+router.use(verifyJWT);
 router.post(
   "/upload",
-  verifyJWT,
   authorizeRoles("admin", "judge", "clerk", "lawyer"),
+  uploadLimiter,
   upload.single("document"),
   validate(uploadDocumentSchema),
   uploadDocument
@@ -46,7 +48,6 @@ router.post(
 
 router.patch(
   "/:id",
-  verifyJWT,
   authorizeRoles("admin", "judge", "clerk"),
   validate(updateDocumentSchema),
   updateDocument
@@ -54,7 +55,6 @@ router.patch(
 
 router.delete(
   "/:id",
-  verifyJWT,
   authorizeRoles("admin", "judge", "clerk"),
   validate(deleteDocumentSchema),
   deleteDocument
@@ -62,7 +62,6 @@ router.delete(
 
 router.get(
   "/statistics",
-  verifyJWT,
   authorizeRoles("admin", "judge"),
   getDocumentStatistics
 );

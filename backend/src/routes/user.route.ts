@@ -27,25 +27,28 @@ import {
   updateAvatarSchema
 } from "@validations/user.validation.js";
 import { avatarUpload } from "@middlewares/avatarUpload.middleware";
+import { readLimiter, uploadLimiter } from "@middlewares/rateLimiter.middleware";
 
 const router = Router();
 
 // Public Routes
-router.get("/slug/:slug", validate(getUserBySlugSchema), getUserBySlug);
+router.get("/slug/:slug", readLimiter, validate(getUserBySlugSchema), getUserBySlug);
 
-router.get("/role/:role", getUsersByRole);
+router.get("/role/:role", readLimiter, getUsersByRole);
 
-router.get("/:id", validate(getUserByIdSchema), getUserById);
+router.get("/:id", readLimiter, validate(getUserByIdSchema), getUserById);
 
 // Protected ROutes
 router.use(verifyJWT);
 
-router.get("/", validate(getAllUsersSchema), getAllUsers);
+router.get("/", readLimiter, validate(getAllUsersSchema), getAllUsers);
 
 router.patch("/:id", validate(updateUserSchema), updateUser);
 
+// Avatar routes
 router.patch(
   "/:id/avatar",
+  uploadLimiter,
   avatarUpload.single("avatar"),
   validate(updateAvatarSchema),
   updateAvatar

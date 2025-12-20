@@ -6,6 +6,7 @@ import {
   generateRefreshToken,
   verifyRefreshToken,
 } from "@utils/jwt.util.js";
+import EmailService from "./email.service.js";
 
 interface RegisterData {
   username: string;
@@ -63,12 +64,12 @@ class AuthService {
     const user = await User.create({
       username,
       email,
-      password, // Will be hashed by pre-save hook
+      password, 
       fullName,
       phone,
       role,
       barCouncilId,
-      avatar: avatarUrl, // ADD THIS
+      avatar: avatarUrl,
     });
 
     // Generate tokens
@@ -78,6 +79,12 @@ class AuthService {
     // Save refresh token
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
+
+    // Send welcome email
+    EmailService.sendWelcomeEmail( user.email, user.fullName, user.username)
+    .catch((err) => {
+      console.error("Error sending welcome email:", err);
+    })
 
     // Remove sensitive data
     const userResponse = await User

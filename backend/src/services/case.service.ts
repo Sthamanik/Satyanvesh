@@ -1,8 +1,10 @@
 import caseModel from "@models/case.model.js";
 import courtModel from "@models/court.model.js";
 import caseTypeModel from "@models/caseType.model.js";
+import casePartyModel from "@models/caseParty.model.js";
 import userModel from "@models/user.model.js";
 import { ApiError } from "@utils/apiError.util.js";
+import EmailService from "@services/email.service.js";
 
 interface CreateCaseData {
   caseNumber: string;
@@ -237,31 +239,100 @@ class CaseService {
 
   // Update case status
   async updateCaseStatus(caseId: string, status: string) {
-    const updateData: any = { status };
-
-    // Auto-set dates based on status
-    if (status === "admitted" && !updateData.admissionDate) {
-      updateData.admissionDate = new Date();
-    }
-    if (status === "judgment" && !updateData.judgmentDate) {
-      updateData.judgmentDate = new Date();
-    }
-
+    // Get case with populated data
     const caseData = await caseModel
-      .findByIdAndUpdate(
-        caseId,
-        { $set: updateData },
-        { new: true, runValidators: true }
-      )
-      .populate("caseTypeId", "name code category")
-      .populate("courtId", "name code type city state")
-      .populate("filedBy", "fullName username email role");
+      .findById(caseId)
+      .populate("filedBy", "email fullName")
+      .populate("courtId", "name")
+      .populate("caseTypeId", "name");
 
     if (!caseData) {
       throw new ApiError(404, "Case not found");
     }
 
-    return caseData;
+    const oldStatus = caseData.status;
+
+    const updateData: any = { status };
+
+    // Auto-set dates based on status
+    if (status === "admitted" && !caseData.admissionDate) {
+      updateData.admissionDate = new Date();
+    }
+    if (status === "judgment" && !caseData.judgmentDate) {
+      updateData.judgmentDate = new Date();
+    }
+
+    // Update case
+    caseData.status = status as
+      | "judgment"
+      | "filed"
+      | "admitted"
+      | "hearing"
+      | "closed"
+      | "archived";
+    if (updateData.admissionDate)
+      caseData.admissionDate = updateData.admissionDate;
+    if (updateData.judgmentDate)
+      caseData.judgmentDate = updateData.judgmentDate;
+    await caseData.save();
+
+    // Send email to the person who filed the case
+    if (caseData.filedBy && (caseData.filedBy as any).email) {
+      EmailService.sendCaseStatusUpdate(
+        (caseData.filedBy as any).email,
+        (caseData.filedBy as any).fullName,
+        caseData.caseNumber,
+        caseData.title,
+        oldStatus,
+        status
+      ).catch((err) => console.error("Failed to send case status email:", err));
+    }
+
+    // Get all parties involved in the case and send emails
+    const parties = await casePartyModel
+      .find({ caseId })
+      .populate("userId", "email fullName");
+
+    for (const party of parties) {
+      // Send email to registered users
+      if (party.userId && (party.userId as any).email) {
+        EmailService.sendCaseStatusUpdate(
+          (party.userId as any).email,
+          (party.userId as any).fullName,
+          caseData.caseNumber,
+          caseData.title,
+          oldStatus,
+          status
+        ).catch((err) =>
+          console.error("Failed to send case status email to party:", err)
+        );
+      }
+      // Send email to external parties with email
+      else if (party.email) {
+        EmailService.sendCaseStatusUpdate(
+          party.email,
+          party.name,
+          caseData.caseNumber,
+          caseData.title,
+          oldStatus,
+          status
+        ).catch((err) =>
+          console.error(
+            "Failed to send case status email to external party:",
+            err
+          )
+        );
+      }
+    }
+
+    // Populate for response
+    const updatedCase = await caseModel
+      .findById(caseId)
+      .populate("caseTypeId", "name code category")
+      .populate("courtId", "name code type city state")
+      .populate("filedBy", "fullName username email role");
+
+    return updatedCase;
   }
 
   // Delete case

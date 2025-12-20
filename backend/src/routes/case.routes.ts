@@ -26,35 +26,37 @@ import {
   updateCaseStatusSchema,
   getAllCasesSchema,
 } from "@validations/case.validation.js";
+import { createCaseLimiter, readLimiter, searchLimiter } from "@middlewares/rateLimiter.middleware";
 
 const router = Router();
 
 // Public routes
-router.get("/search", searchCases);
+router.get("/search", searchLimiter, searchCases);
 
-router.get("/", validate(getAllCasesSchema), getAllCases);
+router.get("/", readLimiter, validate(getAllCasesSchema), getAllCases);
 
-router.get("/slug/:slug", validate(getCaseBySlugSchema), getCaseBySlug);
+router.get("/slug/:slug", readLimiter, validate(getCaseBySlugSchema), getCaseBySlug);
 
 router.get(
   "/case-number/:caseNumber",
+  readLimiter,
   validate(getCaseByCaseNumberSchema),
   getCaseByCaseNumber
 );
 
-router.get("/court/:courtId", getCasesByCourt);
+router.get("/court/:courtId", readLimiter, getCasesByCourt);
 
-router.get("/case-type/:caseTypeId", getCasesByCaseType);
+router.get("/case-type/:caseTypeId", readLimiter, getCasesByCaseType);
 
-router.get("/user/:userId", getCasesByUser);
-
-router.get("/:id", validate(getCaseByIdSchema), getCaseById);
+router.get("/user/:userId", readLimiter, getCasesByUser);
+router.get("/:id", readLimiter, validate(getCaseByIdSchema), getCaseById);
 
 // Admin/Judge/Clerk routes
 router.use(verifyJWT);
 router.post(
   "/",
   authorizeRoles("admin", "judge", "clerk"),
+  createCaseLimiter,
   validate(createCaseSchema),
   createCase
 );
