@@ -34,7 +34,7 @@ export function formatRelativeTime(date: string | Date): string {
 /**
  * Debounce function for search inputs
  */
-export function debounce<T extends (...args: any[]) => void>(
+export function debounce<T extends (...args: never[]) => void>(
   fn: T,
   delay: number
 ) {
@@ -51,7 +51,7 @@ export function debounce<T extends (...args: any[]) => void>(
 /**
  * Throttle function for scroll events
  */
-export function throttle<T extends (...args: unknown[]) => void>(
+export function throttle<T extends (...args: never[]) => void>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {

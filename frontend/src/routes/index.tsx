@@ -4,6 +4,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import GuestRoute from "@/components/auth/GuestRoute";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { Loader2 } from "lucide-react";
+import HearingsListPage from "@/pages/hearings/HearingsListPage";
 
 // Lazy load pages for code splitting
 const HomePage = lazy(() => import("@/pages/HomePage"));
@@ -93,7 +94,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={<PlaceholderPage title="Hearings" />} />
+          <Route index element={<HearingsListPage />} />
         </Route>
 
         <Route

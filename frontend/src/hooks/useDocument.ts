@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { documentsApi, type UploadDocumentPayload } from "@/api/documents.api";
 import { queryKeys } from "@/lib/react-query";
+import type { ApiResponse } from "@/types/api.types";
+import type { AxiosError } from "axios";
 
 /**
  * Get case documents
@@ -71,7 +73,7 @@ export const useUploadDocument = () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       toast.success("Document uploaded successfully");
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<ApiResponse<null>>) => {
       const message =
         error.response?.data?.message || "Failed to upload document";
       toast.error(message);
@@ -86,12 +88,13 @@ export const useUpdateDocument = (id: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: Partial<any>) => documentsApi.updateDocument(id, data),
+    mutationFn: (data: Partial<Record<string, unknown>>) =>
+      documentsApi.updateDocument(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       toast.success("Document updated successfully");
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<ApiResponse<null>>) => {
       const message =
         error.response?.data?.message || "Failed to update document";
       toast.error(message);
@@ -111,7 +114,7 @@ export const useDeleteDocument = () => {
       queryClient.invalidateQueries({ queryKey: ["documents"] });
       toast.success("Document deleted successfully");
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<ApiResponse<null>>) => {
       const message =
         error.response?.data?.message || "Failed to delete document";
       toast.error(message);

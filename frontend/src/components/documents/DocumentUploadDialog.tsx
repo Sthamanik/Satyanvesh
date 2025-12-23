@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Upload, X, FileText } from "lucide-react";
@@ -79,7 +79,7 @@ export default function DocumentUploadDialog({
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    watch,
+    control,
     setValue,
     reset,
   } = useForm<UploadFormData>({
@@ -100,7 +100,11 @@ export default function DocumentUploadDialog({
   // Remove selected file
   const removeFile = () => {
     setSelectedFile(null);
-    setValue("document", undefined as any);
+    // Reset the file input by creating an empty FileList
+    const fileInput = document.getElementById("document") as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = "";
+    }
   };
 
   // Handle form submission
@@ -291,11 +295,17 @@ export default function DocumentUploadDialog({
                 Make this document visible to the public
               </p>
             </div>
-            <Switch
-              id="isPublic"
-              checked={watch("isPublic")}
-              onCheckedChange={(checked: boolean) => setValue("isPublic", checked)}
-              disabled={isSubmitting}
+            <Controller
+              name="isPublic"
+              control={control}
+              render={({ field }) => (
+                <Switch
+                  id="isPublic"
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={isSubmitting}
+                />
+              )}
             />
           </div>
 

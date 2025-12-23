@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DocumentsPage from "@/pages/documents/DocumentsPage";
+import CaseHearingsPage from "../hearings/CaseHearingsPage";
 
 export default function CaseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -239,13 +240,7 @@ export default function CaseDetailPage() {
         </TabsContent>
 
         <TabsContent value="hearings">
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-text-secondary">
-                Hearings will be displayed here
-              </p>
-            </CardContent>
-          </Card>
+          <CaseHearingsPage caseId={caseData._id} />
         </TabsContent>
 
         <TabsContent value="documents">

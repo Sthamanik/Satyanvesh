@@ -161,8 +161,8 @@ export const casesApi = {
   /**
    * Get case statistics (admin/judge only)
    */
-  getCaseStatistics: async (): Promise<ApiResponse<any>> => {
-    const response = await axiosInstance.get<ApiResponse<any>>(
+  getCaseStatistics: async (): Promise<ApiResponse<null>> => {
+    const response = await axiosInstance.get<ApiResponse<null>>(
       "/cases/statistics"
     );
     return response.data;

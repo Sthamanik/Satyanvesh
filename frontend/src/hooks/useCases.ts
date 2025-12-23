@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { casesApi } from '@/api/cases.api';
 import { queryKeys } from '@/lib/react-query';
-import type { Case, SearchParams } from '@/types/api.types';
+import type { ApiResponse, Case, SearchParams } from '@/types/api.types';
 import type { AxiosError } from 'axios';
 
 /**
@@ -84,7 +84,7 @@ export const useCreateCase = () => {
       toast.success('Case created successfully');
       navigate(`/cases/${data.data._id}`);
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<ApiResponse<null>>) => {
       const message = error.response?.data?.message || 'Failed to create case';
       toast.error(message);
     },
@@ -104,7 +104,7 @@ export const useUpdateCase = (id: string) => {
       queryClient.setQueryData(queryKeys.cases.detail(id), data);
       toast.success('Case updated successfully');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<ApiResponse<null>>) => {
       const message = error.response?.data?.message || 'Failed to update case';
       toast.error(message);
     },
@@ -124,7 +124,7 @@ export const useUpdateCaseStatus = () => {
       queryClient.invalidateQueries({ queryKey: ['cases'] });
       toast.success('Case status updated successfully');
     },
-    onError: (error: AxiosError<any>) => {
+    onError: (error: AxiosError<ApiResponse<null>>) => {
       const message = error.response?.data?.message || 'Failed to update status';
       toast.error(message);
     },
@@ -145,7 +145,7 @@ export const useDeleteCase = () => {
       toast.success('Case deleted successfully');
       navigate('/cases');
     },
-    onError: (error: any) => {
+    onError: (error: AxiosError<ApiResponse<null>>) => {
       const message = error.response?.data?.message || 'Failed to delete case';
       toast.error(message);
     },
