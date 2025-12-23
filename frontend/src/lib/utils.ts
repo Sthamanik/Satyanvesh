@@ -34,22 +34,17 @@ export function formatRelativeTime(date: string | Date): string {
 /**
  * Debounce function for search inputs
  */
-export function debounce<T extends (...args: unknown[]) => void>(
-  func: T,
-  wait: number
-): (...args: Parameters<T>) => void {
-  let timeout: ReturnType<typeof setTimeout> | null = null;
+export function debounce<T extends (...args: any[]) => void>(
+  fn: T,
+  delay: number
+) {
+  let timer: ReturnType<typeof setTimeout>;
 
-  return function executedFunction(...args: Parameters<T>) {
-    const later = () => {
-      timeout = null;
-      func(...args);
-    };
-
-    if (timeout) {
-      clearTimeout(timeout);
-    }
-    timeout = setTimeout(later, wait);
+  return (...args: Parameters<T>) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      fn(...args);
+    }, delay);
   };
 }
 
