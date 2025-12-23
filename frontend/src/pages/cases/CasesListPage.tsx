@@ -1,6 +1,14 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Search, Filter, Plus, Eye, Calendar, Building2 } from "lucide-react";
+import {
+  Search,
+  Filter,
+  Plus,
+  Eye,
+  Calendar,
+  Building2,
+  RefreshCw,
+} from "lucide-react";
 import { useGetCases } from "@/hooks/useCases";
 import { debounce, formatDate, getStatusColor, cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useAuth";
@@ -16,6 +24,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CaseStatus } from "@/types/api.types";
+import ApiErrorFallback from "@/components/shared/ApiErrorFallback";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CasesListPage() {
   const { isAdmin, isJudge, isClerk } = useUserRole();
@@ -25,15 +35,15 @@ export default function CasesListPage() {
   const limit = 12;
 
   // Fetch cases with filters
-  const { data, isLoading } = useGetCases({
+  const { data, isLoading, error, refetch, isRefetching } = useGetCases({
     page,
     limit,
     search: searchQuery,
     filter: statusFilter !== "all" ? { status: statusFilter } : undefined,
   });
 
-  const cases = data?.data || [];
-
+  // Safely extract cases array
+  const cases = Array.isArray(data?.data) ? data.data : [];
   const totalPages = data?.meta?.totalPages || 1;
 
   // Debounced search handler
@@ -51,17 +61,70 @@ export default function CasesListPage() {
     setPage(1);
   };
 
+  // Handle retry
+  const handleRetry = () => {
+    refetch();
+  };
+
+  // Error state with detailed fallback
+  if (error) {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-text-primary">Cases</h1>
+            <p className="text-text-secondary mt-1">
+              Browse and search all cases in the system
+            </p>
+          </div>
+        </div>
+
+        {/* Error Display */}
+        <ApiErrorFallback
+          error={error}
+          resetError={handleRetry}
+          showBackButton={false}
+          customMessage="Unable to load cases. This might be because the cases API endpoint is not available yet or there's a connection issue."
+        />
+      </div>
+    );
+  }
+
   // Loading skeleton
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="h-10 bg-background-secondary rounded animate-pulse" />
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex justify-between items-center">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <Skeleton className="h-10 w-32" />
+        </div>
+
+        {/* Search & Filters Skeleton */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex gap-4">
+              <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-10 w-48" />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Grid Skeleton */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div
-              key={i}
-              className="h-48 bg-background-secondary rounded animate-pulse"
-            />
+            <Card key={i}>
+              <CardContent className="pt-6 space-y-4">
+                <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-20 w-full" />
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
@@ -78,14 +141,27 @@ export default function CasesListPage() {
             Browse and search all cases in the system
           </p>
         </div>
-        {(isAdmin || isJudge || isClerk) && (
-          <Link to="/cases/create">
-            <Button className="bg-brand-primary hover:bg-brand-primary/90">
-              <Plus className="w-4 h-4 mr-2" />
-              Create Case
-            </Button>
-          </Link>
-        )}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRetry}
+            disabled={isRefetching}
+          >
+            <RefreshCw
+              className={cn("w-4 h-4 mr-2", isRefetching && "animate-spin")}
+            />
+            Refresh
+          </Button>
+          {(isAdmin || isJudge || isClerk) && (
+            <Link to="/cases/create">
+              <Button className="bg-brand-primary hover:bg-brand-primary/90">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Case
+              </Button>
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Search & Filters */}
@@ -133,7 +209,21 @@ export default function CasesListPage() {
       {cases.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-text-secondary">No cases found</p>
+            <p className="text-text-secondary mb-2">
+              {searchQuery
+                ? `No cases found matching "${searchQuery}"`
+                : statusFilter !== "all"
+                ? `No ${statusFilter.replace("_", " ")} cases found`
+                : "No cases available yet"}
+            </p>
+            {(isAdmin || isJudge || isClerk) && !searchQuery && (
+              <Link to="/cases/create">
+                <Button variant="outline" size="sm" className="mt-4">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create First Case
+                </Button>
+              </Link>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -215,7 +305,7 @@ export default function CasesListPage() {
               <Button
                 variant="outline"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
+                disabled={page === 1 || isRefetching}
               >
                 Previous
               </Button>
@@ -225,7 +315,7 @@ export default function CasesListPage() {
               <Button
                 variant="outline"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
+                disabled={page === totalPages || isRefetching}
               >
                 Next
               </Button>
