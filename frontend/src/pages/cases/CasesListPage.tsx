@@ -33,6 +33,7 @@ export default function CasesListPage() {
   });
 
   const cases = data?.data || [];
+
   const totalPages = data?.meta?.totalPages || 1;
 
   // Debounced search handler

@@ -6,20 +6,13 @@ import { queryKeys } from '@/lib/react-query';
 import type { ApiResponse, Case, SearchParams } from '@/types/api.types';
 import type { AxiosError } from 'axios';
 
-/**
- * Helper to make SearchParams compatible with queryKeys
- */
-const toQueryParams = (
-  params?: SearchParams
-): Record<string, unknown> | undefined =>
-  params ? { ...params } : undefined;
 
 /**
  * Hook to get all cases
  */
 export const useGetCases = (params?: SearchParams) => {
   return useQuery({
-    queryKey: queryKeys.cases.all(toQueryParams(params)),
+    queryKey: queryKeys.cases.all(params as Record<string, unknown>),
     queryFn: () => casesApi.getAllCases(params),
     placeholderData: (prev) => prev,
   });
@@ -31,7 +24,7 @@ export const useGetCases = (params?: SearchParams) => {
 export const useSearchCases = (query: string, params?: SearchParams) => {
   return useQuery({
     queryKey: queryKeys.cases.search(query),
-    queryFn: () => casesApi.searchCases(query, toQueryParams(params)),
+    queryFn: () => casesApi.searchCases(query, (params)),
     enabled: query.length > 0, // Only search if query is not empty
     placeholderData: (prev) => prev,
   });

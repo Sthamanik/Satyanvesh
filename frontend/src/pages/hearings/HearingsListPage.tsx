@@ -8,6 +8,7 @@ import {
   Building2,
   User,
   Gavel,
+  RefreshCw,
 } from "lucide-react";
 import { useGetHearings } from "@/hooks/useHearings";
 import { formatDate, cn } from "@/lib/utils";
@@ -24,6 +25,8 @@ import {
 } from "@/components/ui/select";
 import HearingCreateDialog from "@/components/hearings/HearingCreateDialog";
 import { HearingStatus } from "@/types/api.types";
+import ApiErrorFallback from "@/components/shared/ApiErrorFallback";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function HearingsListPage() {
   const { isAdmin, isJudge, isClerk } = useUserRole();
@@ -33,7 +36,7 @@ export default function HearingsListPage() {
   const limit = 12;
 
   // Fetch hearings with filters
-  const { data, isLoading } = useGetHearings({
+  const { data, isLoading, error, refetch, isRefetching } = useGetHearings({
     page,
     limit,
     filter: statusFilter !== "all" ? { status: statusFilter } : undefined,
@@ -53,17 +56,67 @@ export default function HearingsListPage() {
     return colors[status] || "bg-gray-100 text-gray-800";
   };
 
+  // Handle retry
+  const handleRetry = () => {
+    refetch();
+  };
+
+  // Error state
+  if (error) {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-text-primary">Hearings</h1>
+            <p className="text-text-secondary mt-1">
+              View and manage all scheduled hearings
+            </p>
+          </div>
+        </div>
+
+        {/* Error Display */}
+        <ApiErrorFallback
+          error={error}
+          resetError={handleRetry}
+          showBackButton={false}
+          customMessage="Unable to load hearings. This might be because the hearings API endpoint is not available yet."
+        />
+      </div>
+    );
+  }
+
   // Loading skeleton
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <div className="h-10 bg-background-secondary rounded animate-pulse" />
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="flex justify-between items-center">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <Skeleton className="h-10 w-40" />
+        </div>
+
+        {/* Filters Skeleton */}
+        <Card>
+          <CardContent className="pt-6">
+            <Skeleton className="h-10 w-48" />
+          </CardContent>
+        </Card>
+
+        {/* Grid Skeleton */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div
-              key={i}
-              className="h-48 bg-background-secondary rounded animate-pulse"
-            />
+            <Card key={i}>
+              <CardContent className="pt-6 space-y-4">
+                <Skeleton className="h-6 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-20 w-full" />
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
@@ -81,6 +134,17 @@ export default function HearingsListPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRetry}
+            disabled={isRefetching}
+          >
+            <RefreshCw
+              className={cn("w-4 h-4 mr-2", isRefetching && "animate-spin")}
+            />
+            Refresh
+          </Button>
           <Link to="/hearings/calendar">
             <Button variant="outline">
               <Calendar className="w-4 h-4 mr-2" />
@@ -136,7 +200,22 @@ export default function HearingsListPage() {
         <Card>
           <CardContent className="py-12 text-center">
             <Calendar className="w-12 h-12 text-text-secondary mx-auto mb-4" />
-            <p className="text-text-secondary">No hearings scheduled</p>
+            <p className="text-text-secondary mb-2">
+              {statusFilter === "all"
+                ? "No hearings scheduled"
+                : `No ${statusFilter.replace("_", " ")} hearings found`}
+            </p>
+            {(isAdmin || isJudge || isClerk) && (
+              <Button
+                onClick={() => setCreateDialogOpen(true)}
+                variant="outline"
+                size="sm"
+                className="mt-4"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Schedule First Hearing
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (
@@ -231,7 +310,7 @@ export default function HearingsListPage() {
               <Button
                 variant="outline"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1}
+                disabled={page === 1 || isRefetching}
               >
                 Previous
               </Button>
@@ -241,7 +320,7 @@ export default function HearingsListPage() {
               <Button
                 variant="outline"
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
+                disabled={page === totalPages || isRefetching}
               >
                 Next
               </Button>
