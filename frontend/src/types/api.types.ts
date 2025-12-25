@@ -12,6 +12,16 @@ export interface ApiResponse<T> {
   };
 }
 
+export interface PaginatedResponse<T> {
+  [key: string]: T[] | any; // Dynamic key for data array (cases, users, etc)
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 // User role enum - MATCHES BACKEND
 export enum UserRole {
   ADMIN = "admin",
@@ -137,6 +147,7 @@ export interface Case {
   isSensitive: boolean;
   viewCount: number;
   bookmarkCount: number;
+  verdict: string | null;
   createdAt: string;
   updatedAt: string;
   // Populated fields (when using .populate())
@@ -305,4 +316,13 @@ export interface PaginationParams {
 export interface SearchParams extends PaginationParams {
   search?: string;
   filter?: Record<string, unknown>;
+  status?: string;
+}
+
+// User Statistics
+export interface UserStatistics {
+  totalUsers: number;
+  verifiedUsers: number;
+  unverifiedUsers: number;
+  usersByRole: { _id: string; count: number }[];
 }

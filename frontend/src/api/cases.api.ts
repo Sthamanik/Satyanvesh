@@ -14,8 +14,8 @@ export const casesApi = {
   /**
    * Get all cases with pagination and filters
    */
-  getAllCases: async (params?: SearchParams): Promise<ApiResponse<Case[]>> => {
-    const response = await axiosInstance.get<ApiResponse<Case[]>>("/cases", {
+  getAllCases: async (params?: SearchParams): Promise<ApiResponse<{ cases: Case[]; pagination: any }>> => {
+    const response = await axiosInstance.get<ApiResponse<{ cases: Case[]; pagination: any }>>("/cases", {
       params,
     });
     return response.data;

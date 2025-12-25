@@ -198,6 +198,53 @@ class HearingService {
     return hearing;
   }
 
+  // Get all hearings with filters and pagination
+  async getAllHearings(query: any) {
+    const {
+      page = "1",
+      limit = "10",
+      status,
+      judgeId,
+      caseId,
+      startDate,
+      endDate,
+    } = query;
+
+    const filter: any = {};
+
+    if (status) filter.status = status;
+    if (judgeId) filter.judgeId = judgeId;
+    if (caseId) filter.caseId = caseId;
+    
+    if (startDate || endDate) {
+      filter.hearingDate = {};
+      if (startDate) filter.hearingDate.$gte = new Date(startDate);
+      if (endDate) filter.hearingDate.$lte = new Date(endDate);
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const hearings = await hearingModel
+      .find(filter)
+      .populate("caseId", "caseNumber title status courtId")
+      .populate("judgeId", "fullName username")
+      .sort({ hearingDate: -1 })
+      .skip(skip)
+      .limit(Number(limit));
+
+    const total = await hearingModel.countDocuments(filter);
+
+    return {
+      hearings,
+      pagination: {
+        page: Number(page),
+        limit: Number(limit),
+        total,
+        totalPages: Math.ceil(total / Number(limit)),
+      },
+    };
+  }
+
   // Get upcoming hearings
   async getUpcomingHearings(query: GetUpcomingHearingsQuery) {
     const { judgeId, courtId, limit = "10" } = query;

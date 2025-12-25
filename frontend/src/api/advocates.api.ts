@@ -16,8 +16,8 @@ export const advocatesApi = {
    */
   getAllAdvocates: async (
     params?: SearchParams
-  ): Promise<ApiResponse<Advocate[]>> => {
-    const response = await axiosInstance.get<ApiResponse<Advocate[]>>(
+  ): Promise<ApiResponse<{ advocates: Advocate[]; pagination: any }>> => {
+    const response = await axiosInstance.get<ApiResponse<{ advocates: Advocate[]; pagination: any }>>(
       "/advocates",
       { params }
     );

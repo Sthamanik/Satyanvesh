@@ -36,6 +36,17 @@ export const getHearingById = asyncHandler(
   }
 );
 
+// Get all hearings
+export const getAllHearings = asyncHandler(
+  async (req: Request, res: Response) => {
+    const data = await HearingService.getAllHearings(req.query);
+
+    res
+      .status(200)
+      .json(new ApiResponse(200, data, "Hearings fetched successfully"));
+  }
+);
+
 // Get upcoming hearings
 export const getUpcomingHearings = asyncHandler(
   async (req: Request, res: Response) => {

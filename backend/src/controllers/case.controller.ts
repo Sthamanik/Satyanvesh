@@ -6,7 +6,10 @@ import CaseService from "@services/case.service.js";
 
 // Create case
 export const createCase = asyncHandler(async (req: Request, res: Response) => {
-  const caseData = await CaseService.createCase(req.body);
+  const caseData = await CaseService.createCase({
+    ...req.body,
+    filedBy: req.user?._id,
+  });
 
   res
     .status(201)

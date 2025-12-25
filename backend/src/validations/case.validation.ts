@@ -7,7 +7,7 @@ export const createCaseSchema = z.object({
     description: z.string().trim().optional(),
     caseTypeId: z.string().min(1, "Case type ID is required"),
     courtId: z.string().min(1, "Court ID is required"),
-    filedBy: z.string().min(1, "Filed by user ID is required"),
+    // filedBy is handled by the controller from req.user
     filingDate: z.string().or(z.date()),
     priority: z.enum(["normal", "urgent", "high"]).optional().default("normal"),
     isPublic: z.boolean().optional().default(true),
@@ -29,6 +29,7 @@ export const updateCaseSchema = z.object({
     nextHearingDate: z.string().or(z.date()).optional(),
     isPublic: z.boolean().optional(),
     isSensitive: z.boolean().optional(),
+    verdict: z.string().optional(),
   }),
   params: z.object({
     id: z.string().min(1, "Case ID is required"),

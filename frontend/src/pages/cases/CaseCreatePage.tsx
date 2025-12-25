@@ -58,7 +58,8 @@ export default function CaseCreatePage() {
 
   // Fetch Courts
   const { data: courtsData } = useGetCourts();
-  const courts = courtsData?.data ?? [];
+  // Access defaults to empty array if data missing
+  const courts = courtsData?.data?.courts ?? [];
 
   // Fetch Case Types
   const { data: caseTypesData } = useQuery({
@@ -68,7 +69,7 @@ export default function CaseCreatePage() {
       return res.data;
     },
   });
-  const caseTypes = caseTypesData?.data ?? [];
+  const caseTypes = caseTypesData?.data?.caseTypes ?? [];
 
   const {
     register,

@@ -32,6 +32,7 @@ interface UpdateCaseData {
   nextHearingDate?: Date;
   isPublic?: boolean;
   isSensitive?: boolean;
+  verdict?: string;
 }
 
 interface GetAllCasesQuery {

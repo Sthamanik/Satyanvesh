@@ -49,6 +49,12 @@ router.get("/court/:courtId", readLimiter, getCasesByCourt);
 router.get("/case-type/:caseTypeId", readLimiter, getCasesByCaseType);
 
 router.get("/user/:userId", readLimiter, getCasesByUser);
+router.get(
+  "/statistics",
+  authorizeRoles("admin", "judge"),
+  getCaseStatistics
+);
+
 router.get("/:id", readLimiter, validate(getCaseByIdSchema), getCaseById);
 
 // Admin/Judge/Clerk routes

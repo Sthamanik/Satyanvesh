@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createHearing,
+  getAllHearings,
   getCaseHearings,
   getHearingById,
   getUpcomingHearings,
@@ -27,6 +28,12 @@ const router = Router();
 
 // Public/Protected routes
 router.get(
+  "/",
+  // validate(getAllHearingsSchema), // TODO: Add schema if needed
+  getAllHearings
+);
+
+router.get(
   "/upcoming",
   validate(getUpcomingHearingsSchema),
   getUpcomingHearings
@@ -37,6 +44,12 @@ router.get("/today", getTodaysHearings);
 router.get("/case/:caseId", validate(getCaseHearingsSchema), getCaseHearings);
 
 router.get("/judge/:judgeId", getHearingsByJudge);
+
+router.get(
+  "/statistics",
+  authorizeRoles("admin", "judge"),
+  getHearingStatistics
+);
 
 router.get("/:id", validate(getHearingByIdSchema), getHearingById);
 

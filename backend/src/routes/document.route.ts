@@ -33,6 +33,8 @@ router.get("/case/:caseId/type/:type", readLimiter, getDocumentsByType);
 
 router.get("/hearing/:hearingId", readLimiter, getHearingDocuments);
 
+
+
 router.get("/:id", readLimiter, validate(getDocumentByIdSchema), getDocumentById);
 
 // Admin/Judge/Clerk/Lawyer routes

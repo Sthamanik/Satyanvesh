@@ -32,6 +32,13 @@ import { readLimiter, uploadLimiter } from "@middlewares/rateLimiter.middleware"
 const router = Router();
 
 // Public Routes
+router.get(
+  "/statistics",
+  verifyJWT,
+  authorizeRoles("admin"),
+  getUserStatistics
+);
+
 router.get("/slug/:slug", readLimiter, validate(getUserBySlugSchema), getUserBySlug);
 
 router.get("/role/:role", readLimiter, getUsersByRole);
@@ -69,7 +76,5 @@ router.patch("/:id/role", validate(updateUserRoleSchema), updateUserRole);
 router.patch("/:id/verify", validate(verifyUserSchema), verifyUser);
 
 router.delete("/:id", validate(deleteUserSchema), deleteUser);
-
-router.get("/statistics", getUserStatistics);
 
 export default router;

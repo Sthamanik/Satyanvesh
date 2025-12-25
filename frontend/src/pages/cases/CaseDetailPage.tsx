@@ -108,6 +108,19 @@ export default function CaseDetailPage() {
             </div>
           )}
 
+          {/* Verdict Section - Only show if present */}
+          {caseData.verdict && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-md">
+              <div className="flex items-center gap-2 mb-2">
+                <Gavel className="w-5 h-5 text-green-700" />
+                <h3 className="text-sm font-semibold text-green-800">
+                  Final Verdict
+                </h3>
+              </div>
+              <p className="text-green-900">{caseData.verdict}</p>
+            </div>
+          )}
+
           {/* Meta Information Grid */}
           <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-4">
@@ -147,41 +160,27 @@ export default function CaseDetailPage() {
             </div>
 
             <div className="space-y-4">
-              {caseData.judge && (
                 <div>
                   <div className="flex items-center gap-2 text-text-secondary mb-1">
                     <User className="w-4 h-4" />
-                    <p className="text-sm font-semibold">Judge</p>
+                    <p className="text-sm font-semibold">Filed By</p>
                   </div>
                   <p className="text-text-primary ml-6">
-                    {typeof caseData.judge === "string"
-                      ? caseData.judge
-                      : caseData.judge?.fullName || "N/A"}
+                    {typeof caseData.filedBy === "string"
+                      ? caseData.filedBy
+                      : (caseData.filedBy as any)?.fullName || "N/A"}
                   </p>
                 </div>
-              )}
 
-              <div>
-                <div className="flex items-center gap-2 text-text-secondary mb-1">
-                  <User className="w-4 h-4" />
-                  <p className="text-sm font-semibold">Registered By</p>
+                <div>
+                  <div className="flex items-center gap-2 text-text-secondary mb-1">
+                    <FileText className="w-4 h-4" />
+                    <p className="text-sm font-semibold">Total Views</p>
+                  </div>
+                  <p className="text-text-primary ml-6">
+                    {caseData.viewCount || 0}
+                  </p>
                 </div>
-                <p className="text-text-primary ml-6">
-                  {typeof caseData.registeredBy === "string"
-                    ? caseData.registeredBy
-                    : caseData.registeredBy?.fullName || "N/A"}
-                </p>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 text-text-secondary mb-1">
-                  <FileText className="w-4 h-4" />
-                  <p className="text-sm font-semibold">Total Views</p>
-                </div>
-                <p className="text-text-primary ml-6">
-                  {caseData.totalViews || 0}
-                </p>
-              </div>
             </div>
           </div>
         </CardContent>

@@ -1,20 +1,25 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  Calendar,
-  Plus,
-  Filter,
-  Clock,
-  Building2,
-  User,
-  Gavel,
-  RefreshCw,
+import { 
+  MapPin, 
+  Clock, 
+  Search, 
+  Gavel, 
+  Plus, 
+  Edit, 
+  Trash2 
 } from "lucide-react";
-import { useGetUpcomingHearings } from "@/hooks/useHearings";
-import { formatDate, cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useAuth";
+import { 
+  useGetAllHearings, 
+  useCreateHearing, 
+  useUpdateHearing, 
+  useDeleteHearing 
+} from "@/hooks/useHearings";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -23,317 +28,311 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import HearingCreateDialog from "@/components/hearings/HearingCreateDialog";
-import { HearingStatus } from "@/types/api.types";
-import ApiErrorFallback from "@/components/shared/ApiErrorFallback";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import HearingDialog from "@/components/hearings/HearingDialog";
+
+import { HearingStatus } from "@/types/api.types";
+import type { Hearing, Case, User as APIUser } from "@/types/api.types";
+import { format } from "date-fns";
+
+/* ------------------------------------------------------------------ */
+/* Helper to safely access nested objects */
+/* ------------------------------------------------------------------ */
+function getJudgeName(hearing: Hearing): string {
+    if (typeof hearing.judgeId === 'object' && hearing.judgeId !== null) {
+        return (hearing.judgeId as unknown as APIUser).fullName;
+    }
+    return "Unknown Judge";
+}
+
+function getCase(hearing: Hearing): Case | null {
+    if (typeof hearing.caseId === 'object' && hearing.caseId !== null) {
+        return hearing.caseId as unknown as Case;
+    }
+    return null;
+}
 
 export default function HearingsListPage() {
-  const { isAdmin, isJudge, isClerk } = useUserRole();
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [page, setPage] = useState(1);
-  const limit = 12;
+  const { isAdmin, isJudge } = useUserRole();
+  const canManage = isAdmin || isJudge;
 
-  // Fetch upcoming hearings with filters
-  const { data, isLoading, error, refetch, isRefetching } = useGetUpcomingHearings({
-    page,
-    limit,
-    filter: statusFilter !== "all" ? { status: statusFilter } : undefined,
+  /* ---------------- State ---------------- */
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedHearing, setSelectedHearing] = useState<Hearing | null>(null);
+
+  /* ---------------- Queries & Mutations ---------------- */
+  const { data, isLoading } = useGetAllHearings({
+    page: page,
+    limit: 10,
+    status: statusFilter !== "all" ? statusFilter : undefined,
   });
 
-  const hearings = data?.data || [];
-  const totalPages = data?.meta?.totalPages || 1;
+  const createMutation = useCreateHearing();
+  const updateMutation = useUpdateHearing(selectedHearing?._id ?? "");
+  const deleteMutation = useDeleteHearing();
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      scheduled: "bg-blue-100 text-blue-800",
-      ongoing: "bg-purple-100 text-purple-800",
-      completed: "bg-green-100 text-green-800",
-      adjourned: "bg-yellow-100 text-yellow-800",
-      cancelled: "bg-red-100 text-red-800",
-    };
-    return colors[status] || "bg-gray-100 text-gray-800";
+  const hearings: Hearing[] = data?.data?.hearings || [];
+  const totalPages = data?.data?.pagination?.pages || 1;
+
+  /* ---------------- Handlers ---------------- */
+
+  const handleSubmit = async (values: any) => {
+    if (selectedHearing) {
+      await updateMutation.mutateAsync(values);
+    } else {
+      await createMutation.mutateAsync(values);
+    }
+    setDialogOpen(false);
+    setSelectedHearing(null);
   };
 
-  // Handle retry
-  const handleRetry = () => {
-    refetch();
+  const handleDelete = async () => {
+    if (selectedHearing) {
+      await deleteMutation.mutateAsync(selectedHearing._id);
+      setDeleteDialogOpen(false);
+      setSelectedHearing(null);
+    }
   };
 
-  // Error state
-  if (error) {
-    return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold text-text-primary">Hearings</h1>
-            <p className="text-text-secondary mt-1">
-              View and manage all scheduled hearings
-            </p>
-          </div>
-        </div>
+  const openCreateDialog = () => {
+    setSelectedHearing(null);
+    setDialogOpen(true);
+  };
 
-        {/* Error Display */}
-        <ApiErrorFallback
-          error={error}
-          resetError={handleRetry}
-          showBackButton={false}
-          customMessage="Unable to load hearings. This might be because the hearings API endpoint is not available yet."
-        />
-      </div>
-    );
-  }
+  const openEditDialog = (hearing: Hearing) => {
+    setSelectedHearing(hearing);
+    setDialogOpen(true);
+  };
 
-  // Loading skeleton
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        {/* Header Skeleton */}
-        <div className="flex justify-between items-center">
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-48" />
-            <Skeleton className="h-4 w-96" />
-          </div>
-          <Skeleton className="h-10 w-40" />
-        </div>
+  const openDeleteDialog = (hearing: Hearing) => {
+    setSelectedHearing(hearing);
+    setDeleteDialogOpen(true);
+  };
 
-        {/* Filters Skeleton */}
-        <Card>
-          <CardContent className="pt-6">
-            <Skeleton className="h-10 w-48" />
-          </CardContent>
-        </Card>
-
-        {/* Grid Skeleton */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i}>
-              <CardContent className="pt-6 space-y-4">
-                <Skeleton className="h-6 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-20 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  const getStatusColor = (status: HearingStatus) => {
+    switch (status) {
+      case HearingStatus.SCHEDULED: return "bg-blue-100 text-blue-800";
+      case HearingStatus.COMPLETED: return "bg-green-100 text-green-800";
+      case HearingStatus.ADJOURNED: return "bg-yellow-100 text-yellow-800";
+      case HearingStatus.CANCELLED: return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
+  };
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-text-primary">Hearings</h1>
-          <p className="text-text-secondary mt-1">
-            View and manage all scheduled hearings
+          <h1 className="text-3xl font-bold">Hearings</h1>
+          <p className="text-gray-600 mt-1">
+            Manage court hearings and schedules
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRetry}
-            disabled={isRefetching}
-          >
-            <RefreshCw
-              className={cn("w-4 h-4 mr-2", isRefetching && "animate-spin")}
-            />
-            Refresh
+        {canManage && (
+          <Button onClick={openCreateDialog} className="bg-brand-primary">
+            <Plus className="w-4 h-4 mr-2" />
+            Schedule Hearing
           </Button>
-          <Link to="/hearings/calendar">
-            <Button variant="outline">
-              <Calendar className="w-4 h-4 mr-2" />
-              Calendar View
-            </Button>
-          </Link>
-          {(isAdmin || isJudge || isClerk) && (
-            <Button
-              onClick={() => setCreateDialogOpen(true)}
-              className="bg-brand-primary hover:bg-brand-primary/90"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Schedule Hearing
-            </Button>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Filters */}
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-48">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value={HearingStatus.SCHEDULED}>
-                  Scheduled
-                </SelectItem>
-                <SelectItem value={HearingStatus.ONGOING}>
-                  Ongoing
-                </SelectItem>
-                <SelectItem value={HearingStatus.COMPLETED}>
-                  Completed
-                </SelectItem>
-                <SelectItem value={HearingStatus.ADJOURNED}>
-                  Adjourned
-                </SelectItem>
-                <SelectItem value={HearingStatus.CANCELLED}>
-                  Cancelled
-                </SelectItem>
-              </SelectContent>
-            </Select>
+        <CardContent className="pt-6 flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+            <Input 
+              placeholder="Search (Not fully implemented on backend filter yet)..." 
+              className="pl-9"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
+          <Select 
+            value={statusFilter} 
+            onValueChange={setStatusFilter}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              {Object.values(HearingStatus).map(s => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
 
-      {/* Hearings Grid */}
-      {hearings.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Calendar className="w-12 h-12 text-text-secondary mx-auto mb-4" />
-            <p className="text-text-secondary mb-2">
-              {statusFilter === "all"
-                ? "No hearings scheduled"
-                : `No ${statusFilter.replace("_", " ")} hearings found`}
-            </p>
-            {(isAdmin || isJudge || isClerk) && (
-              <Button
-                onClick={() => setCreateDialogOpen(true)}
-                variant="outline"
-                size="sm"
-                className="mt-4"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Schedule First Hearing
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+      {/* List */}
+      {isLoading ? (
+        <div className="space-y-4">
+             {[1,2,3].map(i => (
+                 <Skeleton key={i} className="h-32 w-full rounded-lg" />
+             ))}
+        </div>
       ) : (
-        <>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {hearings.map((hearing) => (
-              <Card
-                key={hearing._id}
-                className="hover:shadow-lg transition-shadow cursor-pointer"
-              >
-                <CardContent className="pt-6">
-                  {/* Date & Status */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <div className="flex items-center gap-2 text-brand-primary mb-1">
-                        <Calendar className="w-4 h-4" />
-                        <p className="font-semibold">
-                          {formatDate(hearing.hearingDate, "PPP")}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 text-text-secondary text-sm">
-                        <Clock className="w-3 h-3" />
-                        <p>{hearing.hearingTime}</p>
-                      </div>
-                    </div>
-                    <Badge
-                      className={cn("text-xs", getStatusColor(hearing.status))}
-                    >
-                      {hearing.status.replace("_", " ")}
-                    </Badge>
-                  </div>
+        <div className="space-y-4">
+          {hearings.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                  No hearings found.
+              </div>
+          ) : (
+            hearings.map((hearing) => {
+              const caseData = getCase(hearing);
+              const judgeName = getJudgeName(hearing);
 
-                  {/* Case Info */}
-                  <div className="space-y-3 text-sm">
-                    <div className="flex items-start gap-2">
-                      <Gavel className="w-4 h-4 text-text-secondary mt-0.5 shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-xs text-text-secondary">Case</p>
-                        <p className="font-medium text-text-primary truncate">
-                          {typeof hearing.case === "string"
-                            ? hearing.case
-                            : hearing.case?.caseNumber || "N/A"}
-                        </p>
+              return (
+                <Card key={hearing._id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-6">
+                    <div className="flex flex-col md:flex-row gap-6">
+                      {/* Date Box */}
+                      <div className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-lg min-w-[100px]">
+                        <span className="text-sm font-medium text-gray-500 uppercase">
+                          {format(new Date(hearing.hearingDate), "MMM")}
+                        </span>
+                        <span className="text-3xl font-bold text-gray-900">
+                          {format(new Date(hearing.hearingDate), "dd")}
+                        </span>
+                         <span className="text-sm text-gray-500">
+                           {hearing.hearingTime}
+                         </span>
                       </div>
-                    </div>
 
-                    {hearing.courtRoom && (
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-text-secondary" />
-                        <div>
-                          <p className="text-xs text-text-secondary">
-                            Court Room
-                          </p>
-                          <p className="text-text-primary">
-                            {hearing.courtRoom}
-                          </p>
+                      {/* Content */}
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="font-semibold text-lg">
+                                {caseData ? (
+                                    <Link to={`/admin/cases/${caseData._id}`} className="hover:underline text-brand-primary">
+                                        {caseData.caseNumber}
+                                    </Link>
+                                ) : "Unknown Case"}
+                              </h3>
+                              <Badge className={getStatusColor(hearing.status)}>
+                                {hearing.status}
+                              </Badge>
+                            </div>
+                            <p className="font-medium text-gray-900">
+                               {caseData?.title || "Untitled Case"}
+                            </p>
+                          </div>
+                          
+                          {canManage && (
+                            <div className="flex gap-2">
+                                <Button size="icon" variant="ghost" onClick={() => openEditDialog(hearing)}>
+                                    <Edit className="w-4 h-4 text-gray-500" />
+                                </Button>
+                                <Button size="icon" variant="ghost" onClick={() => openDeleteDialog(hearing)}>
+                                    <Trash2 className="w-4 h-4 text-red-500" />
+                                </Button>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    )}
 
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4 text-text-secondary" />
-                      <div>
-                        <p className="text-xs text-text-secondary">Judge</p>
-                        <p className="text-text-primary truncate">
-                          {typeof hearing.judge === "string"
-                            ? hearing.judge
-                            : hearing.judge?.fullName || "N/A"}
-                        </p>
+                        <div className="grid sm:grid-cols-2 gap-4 text-sm text-gray-600">
+                          <div className="flex items-center gap-2">
+                            <Gavel className="w-4 h-4" />
+                            <span>Judge: {judgeName}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                             <MapPin className="w-4 h-4" />
+                             <span>Room: {hearing.courtRoom || "N/A"}</span>
+                          </div>
+                           <div className="flex items-center gap-2">
+                             <Clock className="w-4 h-4" />
+                             <span>Purpose: {hearing.purpose}</span>
+                          </div>
+                        </div>
+
+                        {hearing.notes && (
+                            <p className="text-sm text-gray-500 mt-2 bg-gray-50 p-2 rounded">
+                                {hearing.notes}
+                            </p>
+                        )}
                       </div>
                     </div>
-
-                    {hearing.purpose && (
-                      <div className="mt-3 pt-3 border-t border-background-secondary">
-                        <p className="text-xs text-text-secondary mb-1">
-                          Purpose
-                        </p>
-                        <p className="text-sm text-text-primary line-clamp-2">
-                          {hearing.purpose}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                disabled={page === 1 || isRefetching}
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-text-secondary">
-                Page {page} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages || isRefetching}
-              >
-                Next
-              </Button>
-            </div>
+                  </CardContent>
+                </Card>
+              );
+            })
           )}
-        </>
+        </div>
+      )}
+      
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-2 mt-6">
+            <Button 
+                variant="outline" 
+                onClick={() => setPage(p => Math.max(1, p-1))}
+                disabled={page === 1}
+            >
+                Previous
+            </Button>
+            <span className="flex items-center px-4">
+                Page {page} of {totalPages}
+            </span>
+             <Button 
+                variant="outline" 
+                onClick={() => setPage(p => Math.min(totalPages, p+1))}
+                disabled={page === totalPages}
+            >
+                Next
+            </Button>
+        </div>
       )}
 
-      {/* Create Dialog */}
-      <HearingCreateDialog
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
+      {/* Dialogs */}
+      <HearingDialog 
+        open={dialogOpen}
+        onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) setSelectedHearing(null);
+        }}
+        onSubmit={handleSubmit}
+        initialData={selectedHearing || undefined}
+        isSubmitting={createMutation.isPending || updateMutation.isPending}
       />
+
+       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Hearing?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this hearing record?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

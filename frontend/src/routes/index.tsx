@@ -31,6 +31,7 @@ const PublicCaseDetailPage = lazy(
   () => import("@/pages/public/PublicCaseDetailPage")
 );
 const CaseCreatePage = lazy(() => import("@/pages/cases/CaseCreatePage"));
+const CaseEditPage = lazy(() => import("@/pages/cases/CaseEditPage"));
 const CaseHearingsPage = lazy(
   () => import("@/pages/hearings/CaseHearingsPage")
 );
@@ -122,6 +123,7 @@ const AppRoutes = () => {
         >
           <Route index element={<CasesListPage />} />
           <Route path="create" element={<CaseCreatePage />} />
+          <Route path=":id/edit" element={<CaseEditPage />} />
           <Route path=":id" element={<CaseDetailPage />} />
           <Route path=":id/hearings" element={<CaseHearingsPage />} />
         </Route>

@@ -10,6 +10,23 @@ const toQueryParams = (
 ): Record<string, unknown> | undefined => (params ? { ...params } : undefined);
 
 /**
+ * Hook to get all hearings with pagination and filters
+ */
+export const useGetAllHearings = (params?: SearchParams) => {
+  return useQuery({
+    queryKey: queryKeys.hearings.all(toQueryParams(params)),
+    queryFn: async () => {
+      try {
+        return await hearingsApi.getAllHearings(params);
+      } catch (error) {
+        console.error("Failed to fetch hearings:", error);
+        throw error;
+      }
+    },
+  });
+};
+
+/**
  * Hook to get case hearings
  */
 export const useGetCaseHearings = (caseId: string) => {

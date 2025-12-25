@@ -1,18 +1,23 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 import {
-  Calendar,
   Clock,
   User,
   Building2,
   Plus,
   Trash2,
+  Edit,
 } from "lucide-react";
-import { useGetCaseHearings, useDeleteHearing } from "@/hooks/useHearings";
+import { 
+  useGetCaseHearings, 
+  useCreateHearing, 
+  useUpdateHearing, 
+  useDeleteHearing 
+} from "@/hooks/useHearings";
 import { formatDate, cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -24,7 +29,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import HearingCreateDialog from "@/components/hearings/HearingCreateDialog";
+import HearingDialog from "@/components/hearings/HearingDialog";
+import { HearingStatus } from "@/types/api.types";
+import type { Hearing } from "@/types/api.types";
 
 interface CaseHearingsPageProps {
   caseId?: string;
@@ -35,11 +42,11 @@ export default function CaseHearingsPage({ caseId: propCaseId }: CaseHearingsPag
   const caseId = propCaseId || routeCaseId;
   
   const { isAdmin, isJudge, isClerk } = useUserRole();
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const canManage = isAdmin || isJudge || isClerk;
+  
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedHearingId, setSelectedHearingId] = useState<string | null>(
-    null
-  );
+  const [selectedHearing, setSelectedHearing] = useState<Hearing | null>(null);
 
   if (!caseId) {
     return (
@@ -50,34 +57,56 @@ export default function CaseHearingsPage({ caseId: propCaseId }: CaseHearingsPag
   }
 
   const { data, isLoading, error } = useGetCaseHearings(caseId);
+  const createMutation = useCreateHearing();
+  const updateMutation = useUpdateHearing(selectedHearing?._id ?? "");
   const deleteMutation = useDeleteHearing();
 
   const hearings = data?.data || [];
-  const canCreate = isAdmin || isJudge || isClerk;
-  const canDelete = isAdmin;
 
   const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      scheduled: "bg-blue-100 text-blue-800",
-      in_progress: "bg-purple-100 text-purple-800",
-      completed: "bg-green-100 text-green-800",
-      postponed: "bg-yellow-100 text-yellow-800",
-      cancelled: "bg-red-100 text-red-800",
-    };
-    return colors[status] || "bg-gray-100 text-gray-800";
+    switch (status) {
+      case HearingStatus.SCHEDULED: return "bg-blue-100 text-blue-800";
+      case HearingStatus.COMPLETED: return "bg-green-100 text-green-800";
+      case HearingStatus.ADJOURNED: return "bg-yellow-100 text-yellow-800";
+      case HearingStatus.CANCELLED: return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setSelectedHearingId(id);
+  const handleOpenCreate = () => {
+    setSelectedHearing(null);
+    setDialogOpen(true);
+  };
+
+  const handleOpenEdit = (hearing: Hearing) => {
+    setSelectedHearing(hearing);
+    setDialogOpen(true);
+  };
+
+  const handleDelete = (hearing: Hearing) => {
+    setSelectedHearing(hearing);
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
-    if (selectedHearingId) {
-      deleteMutation.mutate(selectedHearingId);
+  const confirmDelete = async () => {
+    if (selectedHearing) {
+      await deleteMutation.mutateAsync(selectedHearing._id);
       setDeleteDialogOpen(false);
-      setSelectedHearingId(null);
+      setSelectedHearing(null);
     }
+  };
+
+  const handleSubmit = async (values: any) => {
+    // If creating, ensure caseId is present
+    const payload = { ...values, caseId };
+    
+    if (selectedHearing) {
+      await updateMutation.mutateAsync(payload);
+    } else {
+      await createMutation.mutateAsync(payload);
+    }
+    setDialogOpen(false);
+    setSelectedHearing(null);
   };
 
   if (isLoading) {
@@ -98,155 +127,157 @@ export default function CaseHearingsPage({ caseId: propCaseId }: CaseHearingsPag
       <Card>
         <CardContent className="py-12 text-center">
           <p className="text-status-error">Failed to load hearings</p>
+          <Button
+            variant="ghost"
+            onClick={() => window.location.reload()}
+            className="mt-4"
+          >
+            Retry
+          </Button>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Hearings</CardTitle>
-              <p className="text-sm text-text-secondary mt-1">
-                {hearings.length} hearing(s) scheduled
-              </p>
-            </div>
-            {canCreate && (
-              <Button
-                onClick={() => setCreateDialogOpen(true)}
-                size="sm"
-                className="bg-brand-primary hover:bg-brand-primary/90"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Schedule Hearing
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {hearings.length === 0 ? (
-            <div className="text-center py-12">
-              <Calendar className="w-12 h-12 text-text-secondary mx-auto mb-4" />
-              <p className="text-text-secondary">No hearings scheduled yet</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {hearings.map((hearing) => (
-                <div
-                  key={hearing._id}
-                  className="border border-background-secondary rounded-lg p-4 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2 text-brand-primary">
-                        <Calendar className="w-4 h-4" />
-                        <p className="font-semibold">
-                          {formatDate(hearing.hearingDate, "PPP")}
-                        </p>
-                      </div>
-                      <Badge
-                        className={cn(
-                          "text-xs",
-                          getStatusColor(hearing.status)
-                        )}
-                      >
-                        {hearing.status.replace("_", " ")}
-                      </Badge>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold text-text-primary">Hearings</h2>
+        {canManage && (
+          <Button onClick={handleOpenCreate} size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Schedule Hearing
+          </Button>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        {hearings.length === 0 ? (
+          <Card>
+            <CardContent className="py-12 text-center text-text-secondary">
+              No hearings scheduled for this case
+            </CardContent>
+          </Card>
+        ) : (
+          hearings.map((hearing) => (
+            <Card key={hearing._id}>
+              <CardContent className="p-6">
+                <div className="flex flex-col md:flex-row gap-6">
+                  <div className="flex flex-col items-center justify-center p-4 bg-background-secondary rounded-lg min-w-[120px]">
+                    <span className="text-sm font-medium text-text-secondary uppercase">
+                      {formatDate(hearing.hearingDate).split(",")[0]}
+                    </span>
+                    <span className="text-2xl font-bold text-text-primary my-1">
+                       {/* This assumes formatDate returns "Mon, Jan 01, 2024" format approx */}
+                       {new Date(hearing.hearingDate).getDate()}
+                    </span>
+                    <div className="flex items-center text-sm text-text-secondary">
+                      <Clock className="w-4 h-4 mr-1" />
+                      {hearing.hearingTime}
                     </div>
-                    {canDelete && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(hearing._id)}
-                        className="text-status-error hover:text-status-error hover:bg-status-error/10"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
                   </div>
 
-                  <div className="grid md:grid-cols-2 gap-4 text-sm">
-                    <div className="flex items-center gap-2 text-text-secondary">
-                      <Clock className="w-4 h-4" />
-                      <span>{hearing.hearingTime}</span>
+                  <div className="flex-1 space-y-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="font-semibold text-lg text-text-primary">
+                            {hearing.hearingNumber}
+                          </h3>
+                          <Badge
+                            variant="secondary"
+                            className={cn(getStatusColor(hearing.status))}
+                          >
+                            {hearing.status.replace("_", " ")}
+                          </Badge>
+                        </div>
+                        <p className="text-text-secondary">{hearing.purpose}</p>
+                      </div>
+                      
+                      {canManage && (
+                          <div className="flex gap-2">
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => handleOpenEdit(hearing)}
+                                className="text-text-secondary hover:text-brand-primary"
+                            >
+                                <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                                size="icon"
+                                variant="ghost"
+                                onClick={() => handleDelete(hearing)}
+                                className="text-text-secondary hover:text-status-error"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </div>
+                      )}
                     </div>
 
-                    {hearing.courtRoom && (
+                    <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                      <div className="flex items-center gap-2 text-text-secondary">
+                        <User className="w-4 h-4" />
+                        <span>
+                          Judge:{" "}
+                          {typeof hearing.judgeId === "object"
+                            ? (hearing.judgeId as any).fullName
+                            : "U/A"}
+                        </span>
+                      </div>
                       <div className="flex items-center gap-2 text-text-secondary">
                         <Building2 className="w-4 h-4" />
-                        <span>{hearing.courtRoom}</span>
+                        <span>Room: {hearing.courtRoom || "N/A"}</span>
+                      </div>
+                    </div>
+
+                    {hearing.notes && (
+                      <div className="bg-background-secondary p-3 rounded-md text-sm text-text-secondary">
+                        <p className="font-medium mb-1">Notes:</p>
+                        {hearing.notes}
                       </div>
                     )}
-
-                    <div className="flex items-center gap-2 text-text-secondary">
-                      <User className="w-4 h-4" />
-                      <span>
-                        {typeof hearing.judge === "string"
-                          ? hearing.judge
-                          : hearing.judge?.fullName || "N/A"}
-                      </span>
-                    </div>
                   </div>
-
-                  {hearing.purpose && (
-                    <div className="mt-3 pt-3 border-t border-background-secondary">
-                      <p className="text-xs text-text-secondary mb-1">
-                        Purpose
-                      </p>
-                      <p className="text-sm text-text-primary">
-                        {hearing.purpose}
-                      </p>
-                    </div>
-                  )}
-
-                  {hearing.remarks && (
-                    <div className="mt-2">
-                      <p className="text-xs text-text-secondary mb-1">
-                        Remarks
-                      </p>
-                      <p className="text-sm text-text-primary">
-                        {hearing.remarks}
-                      </p>
-                    </div>
-                  )}
                 </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
 
-      {/* Create Dialog */}
-      <HearingCreateDialog
+      <HearingDialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+            setDialogOpen(open);
+            if (!open) setSelectedHearing(null);
+        }}
+        onSubmit={handleSubmit}
+        initialData={selectedHearing || undefined}
         caseId={caseId}
-        open={createDialogOpen}
-        onOpenChange={setCreateDialogOpen}
+        isSubmitting={createMutation.isPending || updateMutation.isPending}
       />
 
-      {/* Delete Confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Hearing</AlertDialogTitle>
+            <AlertDialogTitle>Cancel Hearing?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this hearing? This action cannot
-              be undone.
+              Are you sure you want to cancel this hearing? This action cannot be
+              undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Keep Hearing</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
-              className="bg-status-error hover:bg-status-error/90"
+              className="bg-status-error hover:bg-red-700"
             >
-              Delete
+              Cancel Hearing
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

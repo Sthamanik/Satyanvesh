@@ -12,7 +12,10 @@ import {
   useGetCaseTypes,
   useDeleteCaseType,
   useToggleCaseTypeStatus,
+  useCreateCaseType,
+  useUpdateCaseType,
 } from "@/hooks/useCaseTypes";
+import CaseTypeDialog from "@/components/caseTypes/CaseTypeDialog";
 import { useUserRole } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,7 +56,7 @@ export default function CaseTypesPage() {
   const deleteMutation = useDeleteCaseType();
   const toggleMutation = useToggleCaseTypeStatus();
 
-  const caseTypes: CaseType[] = Array.isArray(data?.data) ? data.data : [];
+  const caseTypes: CaseType[] = (data?.data as any)?.caseTypes ?? [];
 
   const filteredCaseTypes = caseTypes.filter((ct) => {
     const matchesSearch =
@@ -74,6 +77,39 @@ export default function CaseTypesPage() {
 
   const handleToggleStatus = async (id: string) => {
     await toggleMutation.mutateAsync(id);
+  };
+
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  
+  const createMutation = useCreateCaseType();
+  const updateMutation = useUpdateCaseType(selectedCaseType?._id ?? "");
+
+  const handleCreate = async (values: Partial<CaseType>) => {
+    await createMutation.mutateAsync(values);
+    setCreateDialogOpen(false);
+  };
+
+  const handleUpdate = async (values: Partial<CaseType>) => {
+     if (selectedCaseType) {
+      // Use the hook for the specific ID (though we re-render dialog so it might be tricky with hooks if id changes) 
+      // Actually easier to just call mutation directly if we had a generic update hook, but our hook binds to ID.
+      // Alternatively, we can assume the hook is mounted when dialog is open with valid ID.
+      // But hooks rules say hooks must be at top level.
+      // The `useUpdateCaseType` takes an ID. If we use it at top level with `selectedCaseType?._id`, it will change when selection changes.
+      // This is valid but we need to ensure `selectedCaseType` is set before we call mutate.
+      await updateMutation.mutateAsync(values);
+      setCreateDialogOpen(false);
+      setSelectedCaseType(null); // Reset selection
+    }
+  };
+
+  // Wrapper for submit
+  const handleSubmit = async (values: Partial<CaseType>) => {
+    if (selectedCaseType) {
+      await handleUpdate(values);
+    } else {
+      await handleCreate(values);
+    }
   };
 
   if (error) {
@@ -129,7 +165,13 @@ export default function CaseTypesPage() {
           </p>
         </div>
         {isAdmin && (
-          <Button className="bg-brand-primary hover:bg-brand-primary/90">
+          <Button 
+            className="bg-brand-primary hover:bg-brand-primary/90"
+            onClick={() => {
+              setSelectedCaseType(null);
+              setCreateDialogOpen(true);
+            }}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Add Case Type
           </Button>
@@ -172,7 +214,15 @@ export default function CaseTypesPage() {
             <FileText className="w-12 h-12 text-text-secondary mx-auto mb-4" />
             <p className="text-text-secondary mb-2">No case types found</p>
             {isAdmin && (
-              <Button variant="outline" size="sm" className="mt-4">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-4"
+                onClick={() => {
+                  setSelectedCaseType(null);
+                  setCreateDialogOpen(true);
+                }}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Add First Case Type
               </Button>
@@ -193,7 +243,7 @@ export default function CaseTypesPage() {
                   </div>
                   {isAdmin && (
                     <div className="flex items-center gap-2">
-                      <Button
+                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => handleToggleStatus(caseType._id)}
@@ -229,7 +279,15 @@ export default function CaseTypesPage() {
 
                   {isAdmin && (
                     <div className="flex items-center gap-2 pt-3 border-t border-background-secondary">
-                      <Button variant="outline" size="sm" className="flex-1">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => {
+                          setSelectedCaseType(caseType);
+                          setCreateDialogOpen(true);
+                        }}
+                      >
                         <Edit className="w-4 h-4 mr-2" />
                         Edit
                       </Button>
@@ -252,6 +310,18 @@ export default function CaseTypesPage() {
           ))}
         </div>
       )}
+
+      {/* Create/Edit Dialog */}
+      <CaseTypeDialog 
+        open={createDialogOpen} 
+        onOpenChange={(open) => {
+          setCreateDialogOpen(open);
+          if (!open) setSelectedCaseType(null); // Reset on close
+        }}
+        onSubmit={handleSubmit}
+        initialData={selectedCaseType || undefined}
+        isSubmitting={createMutation.isPending || updateMutation.isPending}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

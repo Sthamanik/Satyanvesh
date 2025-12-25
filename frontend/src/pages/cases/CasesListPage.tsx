@@ -43,8 +43,9 @@ export default function CasesListPage() {
   });
 
   // Safely extract cases array
-  const cases = Array.isArray(data?.data) ? data.data : [];
-  const totalPages = data?.meta?.totalPages || 1;
+  console.log('Cases Debug Data:', data);
+  const cases = data?.data?.cases || [];
+  const totalPages = data?.data?.pagination?.totalPages || 1;
 
   // Debounced search handler
   const handleSearch = useMemo(
@@ -187,18 +188,12 @@ export default function CasesListPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value={CaseStatus.REGISTERED}>
-                  Registered
-                </SelectItem>
-                <SelectItem value={CaseStatus.PENDING}>Pending</SelectItem>
-                <SelectItem value={CaseStatus.UNDER_HEARING}>
-                  Under Hearing
-                </SelectItem>
-                <SelectItem value={CaseStatus.RESERVED}>Reserved</SelectItem>
-                <SelectItem value={CaseStatus.DECIDED}>Decided</SelectItem>
-                <SelectItem value={CaseStatus.DISPOSED}>Disposed</SelectItem>
-                <SelectItem value={CaseStatus.DISMISSED}>Dismissed</SelectItem>
-                <SelectItem value={CaseStatus.WITHDRAWN}>Withdrawn</SelectItem>
+                <SelectItem value={CaseStatus.FILED}>Filed</SelectItem>
+                <SelectItem value={CaseStatus.ADMITTED}>Admitted</SelectItem>
+                <SelectItem value={CaseStatus.HEARING}>Hearing</SelectItem>
+                <SelectItem value={CaseStatus.JUDGMENT}>Judgment</SelectItem>
+                <SelectItem value={CaseStatus.CLOSED}>Closed</SelectItem>
+                <SelectItem value={CaseStatus.ARCHIVED}>Archived</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -283,7 +278,7 @@ export default function CasesListPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <Eye className="w-3 h-3" />
-                        <span>{caseItem.totalViews || 0} views</span>
+                        <span>{caseItem.viewCount || 0} views</span>
                       </div>
                     </div>
 

@@ -16,8 +16,8 @@ export const courtsApi = {
    */
   getAllCourts: async (
     params?: SearchParams
-  ): Promise<ApiResponse<Court[]>> => {
-    const response = await axiosInstance.get<ApiResponse<Court[]>>("/courts", {
+  ): Promise<ApiResponse<{ courts: Court[]; pagination: any }>> => {
+    const response = await axiosInstance.get<ApiResponse<{ courts: Court[]; pagination: any }>>("/courts", {
       params,
     });
     return response.data;

@@ -2,7 +2,6 @@ import axiosInstance from "@/lib/axios";
 import type {
   ApiResponse,
   Hearing,
-  HearingStatus,
   PaginationParams,
   SearchParams,
 } from "@/types/api.types";
@@ -12,6 +11,19 @@ import type {
  * Handles all hearing-related API calls
  */
 export const hearingsApi = {
+  /**
+   * Get all hearings
+   */
+  getAllHearings: async (
+    params?: SearchParams
+  ): Promise<ApiResponse<{ hearings: Hearing[]; pagination: any }>> => {
+    const response = await axiosInstance.get<ApiResponse<{ hearings: Hearing[]; pagination: any }>>(
+      "/hearings",
+      { params }
+    );
+    return response.data;
+  },
+
   /**
    * Get case hearings
    */

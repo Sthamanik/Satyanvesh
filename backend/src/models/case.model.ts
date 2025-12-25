@@ -23,6 +23,7 @@ export interface ICase extends Document {
   isSensitive: boolean;
   viewCount: number;
   bookmarkCount: number;
+  verdict: string | null;
 }
 
 const CaseSchema = new Schema<ICase>(
@@ -122,6 +123,11 @@ const CaseSchema = new Schema<ICase>(
     bookmarkCount: {
       type: Number,
       default: 0,
+    },
+    verdict: {
+      type: String,
+      default: null,
+      trim: true,
     },
   },
   {

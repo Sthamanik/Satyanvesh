@@ -5,6 +5,7 @@ import type {
   UserRole,
   PaginationParams,
   SearchParams,
+  UserStatistics,
 } from "@/types/api.types";
 
 /**
@@ -16,8 +17,12 @@ export const usersApi = {
    * Get all users with pagination and filters (authenticated)
    */
   getAllUsers: async (params?: SearchParams): Promise<ApiResponse<User[]>> => {
+    // Flatten filter parameters
+    const { filter, ...rest } = params || {};
+    const queryParams = { ...rest, ...filter };
+
     const response = await axiosInstance.get<ApiResponse<User[]>>("/users", {
-      params,
+      params: queryParams,
     });
     return response.data;
   },
@@ -150,10 +155,10 @@ export const usersApi = {
    * Get user statistics (admin only)
    */
   getUserStatistics: async (): Promise<
-    ApiResponse<Record<string, unknown>>
+    ApiResponse<UserStatistics>
   > => {
     const response = await axiosInstance.get<
-      ApiResponse<Record<string, unknown>>
+      ApiResponse<UserStatistics>
     >("/users/statistics");
     return response.data;
   },

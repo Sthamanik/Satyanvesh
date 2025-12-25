@@ -1,5 +1,6 @@
 import { Briefcase, Calendar, FileText, Gavel } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts";
 import { useUser } from "@/stores/auth.store";
 import { useQuery } from "@tanstack/react-query";
 import { casesApi } from "@/api/cases.api";
@@ -8,21 +9,12 @@ import { documentsApi } from "@/api/documents.api";
 import { formatRelativeTime } from "@/lib/utils";
 import { Link } from "react-router-dom";
 import type { Case, Hearing } from "@/types/api.types";
-import { HearingStatus } from "@/types/api.types";
-import { Skeleton } from "@/components/ui/skeleton";
+import { CaseStatus, HearingStatus } from "@/types/api.types";
 import ApiErrorFallback from "@/components/shared/ApiErrorFallback";
 
 /* ------------------------------------------------------------------ */
 /* Types */
 /* ------------------------------------------------------------------ */
-
-type CaseStatus =
-  | "filed"
-  | "admitted"
-  | "hearing"
-  | "judgment"
-  | "closed"
-  | "archived";
 
 interface DashboardStats {
   totalCases: number;
@@ -45,16 +37,25 @@ interface StatsCardProps {
   isLoading?: boolean;
 }
 
+const COLORS = {
+  filed: "#3b82f6", // Blue
+  admitted: "#6366f1", // Indigo
+  hearing: "#f97316", // Orange
+  judgment: "#a855f7", // Purple
+  closed: "#22c55e", // Green
+  archived: "#64748b", // Slate
+};
+
 function StatsCard({ title, value, icon: Icon, isLoading }: StatsCardProps) {
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse" />
+      <Card className="overflow-hidden">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-muted rounded-full animate-pulse" />
             <div className="space-y-2">
-              <div className="h-6 w-16 bg-gray-200 rounded animate-pulse" />
-              <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+              <div className="h-6 w-16 bg-muted rounded animate-pulse" />
+              <div className="h-4 w-24 bg-muted rounded animate-pulse" />
             </div>
           </div>
         </CardContent>
@@ -63,15 +64,15 @@ function StatsCard({ title, value, icon: Icon, isLoading }: StatsCardProps) {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-text-secondary">
-          {title}
-        </CardTitle>
-        <Icon className="w-4 h-4 text-text-secondary" />
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold text-text-primary">{value}</div>
+    <Card className="hover:shadow-md transition-shadow">
+      <CardContent className="p-6 flex items-center gap-4">
+        <div className="p-3 bg-primary/10 rounded-full shrink-0">
+          <Icon className="w-6 h-6 text-primary" />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <div className="text-2xl font-bold text-foreground">{value}</div>
+        </div>
       </CardContent>
     </Card>
   );
@@ -88,23 +89,30 @@ const fetchDashboardStats = async (): Promise<DashboardStats> => {
     hearingsApi.getTodaysHearings(),
   ]);
 
-  // API responses have structure: { statusCode, data, message, success }
-  // Cases return paginated data: { cases: [...], pagination: {...} }
-  // Hearings return arrays directly
-  const casesData = casesRes.data as { cases?: unknown[]; pagination?: unknown } | unknown[];
-  const cases = Array.isArray(casesData)
-    ? casesData
-    : (Array.isArray((casesData as { cases?: unknown[] })?.cases)
-        ? (casesData as { cases: unknown[] }).cases
-        : []);
-  const upcomingHearings = Array.isArray(upcomingHearingsRes.data)
-    ? upcomingHearingsRes.data
-    : [];
-  const todaysHearings = Array.isArray(todaysHearingsRes.data)
-    ? todaysHearingsRes.data
-    : [];
-  const allHearings = [...upcomingHearings, ...todaysHearings];
+  // Properly type the cases data extraction
+  let cases: Case[] = [];
+  const rawCasesData = casesRes.data;
+  
+  if (Array.isArray(rawCasesData)) {
+    cases = rawCasesData as Case[];
+  } else if (
+    typeof rawCasesData === "object" && 
+    rawCasesData !== null && 
+    "cases" in rawCasesData && 
+    Array.isArray((rawCasesData as { cases: unknown[] }).cases)
+  ) {
+    cases = (rawCasesData as { cases: Case[] }).cases;
+  }
 
+  const upcomingHearings = (Array.isArray(upcomingHearingsRes.data) 
+    ? upcomingHearingsRes.data 
+    : []) as Hearing[];
+    
+  const todaysHearings = (Array.isArray(todaysHearingsRes.data) 
+    ? todaysHearingsRes.data 
+    : []) as Hearing[];
+
+  const allHearings = [...upcomingHearings, ...todaysHearings];
   const totalCases = cases.length;
 
   const activeHearings = allHearings.filter(
@@ -113,7 +121,7 @@ const fetchDashboardStats = async (): Promise<DashboardStats> => {
   ).length;
 
   const pendingCases = cases.filter(
-    (c) => c.status === "filed" || c.status === "admitted"
+    (c) => c.status === CaseStatus.FILED || c.status === CaseStatus.ADMITTED
   ).length;
 
   const recentCases = [...cases]
@@ -133,14 +141,24 @@ const fetchDashboardStats = async (): Promise<DashboardStats> => {
 
   const statusBreakdown = cases.reduce<Partial<Record<CaseStatus, number>>>(
     (acc, c) => {
-      acc[c.status] = (acc[c.status] ?? 0) + 1;
+      const status = c.status as CaseStatus;
+      acc[status] = (acc[status] ?? 0) + 1;
       return acc;
     },
     {}
   );
 
-  // Get total documents count (approximate from cases)
-  const documents = 0; // Will be calculated if we have document statistics
+  // Get document statistics (may fail for non-admin users)
+  let documents = 0;
+  try {
+    const documentsRes = await documentsApi.getDocumentStatistics();
+    if (documentsRes.data && typeof documentsRes.data.totalDocuments === 'number') {
+      documents = documentsRes.data.totalDocuments;
+    }
+  } catch (error) {
+    // Ignore error, default to 0
+    console.warn("Failed to fetch document stats:", error);
+  }
 
   return {
     totalCases,
@@ -288,15 +306,16 @@ export default function DashboardHomePage() {
             ) : stats?.upcomingHearings.length ? (
               <div className="space-y-4">
                 {stats.upcomingHearings.map((h) => {
+                  /* Backend populates caseId, not case */
                   const caseData =
-                    typeof h.case === "object" && h.case
-                      ? h.case
-                      : { caseNumber: "N/A" };
+                    typeof h.caseId === "object" && h.caseId
+                      ? (h.caseId as any)
+                      : { caseNumber: "N/A", title: "Untitled Case" };
 
                   return (
                     <Link
                       key={h._id}
-                      to={`/cases/${h.caseId}`}
+                      to={`/cases/${caseData._id}`}
                       className="flex justify-between p-3 bg-background-secondary rounded hover:bg-background-secondary/80 transition"
                     >
                       <div>
@@ -329,37 +348,81 @@ export default function DashboardHomePage() {
       </div>
 
       {/* Status Overview */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Case Status Overview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-6">
-            {(
-              [
-                "filed",
-                "admitted",
-                "hearing",
-                "judgment",
-                "closed",
-                "archived",
-              ] as CaseStatus[]
-            ).map((status) => (
-              <div
-                key={status}
-                className="text-center p-4 bg-background-secondary rounded"
-              >
-                <p className="text-2xl font-bold">
-                  {stats?.statusBreakdown?.[status] ?? 0}
-                </p>
-                <p className="text-xs capitalize mt-1 text-text-secondary">
-                  {status.replace("_", " ")}
-                </p>
+      {/* Status Overview */}
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card className="col-span-1 md:col-span-1">
+          <CardHeader>
+            <CardTitle>Case Status Distribution</CardTitle>
+            <CardDescription>Breakdown of cases by current status</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+               <div className="h-[300px] w-full bg-muted/20 animate-pulse rounded" />
+            ) : stats?.totalCases ? (
+              <div className="h-[300px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={Object.entries(stats.statusBreakdown || {}).map(
+                        ([key, value]) => ({
+                          name: key.charAt(0).toUpperCase() + key.slice(1),
+                          value,
+                          status: key,
+                        })
+                      )}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {Object.keys(stats.statusBreakdown || {}).map((key, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={COLORS[key as keyof typeof COLORS] || "#8884d8"} 
+                        />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                No data available
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Detailed Breakdown Table */}
+        <Card className="col-span-1 md:col-span-2">
+           <CardHeader>
+            <CardTitle>Status details</CardTitle>
+            <CardDescription>Detailed count of cases in each stage</CardDescription>
+          </CardHeader>
+          <CardContent>
+             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+               {Object.entries(COLORS).map(([status, color]) => {
+                 const count = stats?.statusBreakdown?.[status as CaseStatus] || 0;
+                 return (
+                   <div key={status} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
+                      <div>
+                        <p className="text-sm font-medium capitalize text-foreground">
+                          {status.replace("_", " ")}
+                        </p>
+                        <p className="text-2xl font-bold text-foreground">{count}</p>
+                      </div>
+                   </div>
+                 );
+               })}
+             </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
