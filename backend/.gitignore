@@ -15,4 +15,4 @@ logs
 npm-debug.log*
 
 #dataSeed
-seeds/
+scripts/

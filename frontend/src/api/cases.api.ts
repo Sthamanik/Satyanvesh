@@ -167,4 +167,29 @@ export const casesApi = {
     );
     return response.data;
   },
+
+  /**
+   * Get public cases (no auth required)
+   */
+  getPublicCases: async (
+    params?: SearchParams
+  ): Promise<ApiResponse<Case[]>> => {
+    const response = await axiosInstance.get<ApiResponse<Case[]>>(
+      "/cases/public",
+      {
+        params,
+      }
+    );
+    return response.data;
+  },
+
+  /**
+   * Get public case by ID (no auth required)
+   */
+  getPublicCaseById: async (id: string): Promise<ApiResponse<Case>> => {
+    const response = await axiosInstance.get<ApiResponse<Case>>(
+      `/cases/public/${id}`
+    );
+    return response.data;
+  },
 };

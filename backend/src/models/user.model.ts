@@ -74,7 +74,9 @@ const UserSchema = new Schema<IUser>(
       type: String,
       sparse: true,
       unique: true,
-      default: null,
+      required: function (): boolean {
+        return this.role === "lawyer";
+      },
     },
     isVerified: {
       type: Boolean,

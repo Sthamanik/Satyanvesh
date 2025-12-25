@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "seed": "tsx ./scripts/seed.ts",
     "dev": "tsx watch src/server.ts",
     "build": "tsup src/server.ts --format esm --dts --out-dir dist",
     "start": "nodemon dist/server.mjs"

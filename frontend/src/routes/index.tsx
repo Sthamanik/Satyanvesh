@@ -4,8 +4,6 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import GuestRoute from "@/components/auth/GuestRoute";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import { Loader2 } from "lucide-react";
-import HearingsListPage from "@/pages/hearings/HearingsListPage";
-import CasesListPage from "@/pages/cases/CasesListPage";
 
 // Lazy load pages for code splitting
 const HomePage = lazy(() => import("@/pages/HomePage"));
@@ -13,6 +11,24 @@ const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
 const DashboardHomePage = lazy(
   () => import("@/pages/dashboard/DashboardHomePage")
+);
+const CasesListPage = lazy(() => import("@/pages/cases/CasesListPage"));
+const CaseDetailPage = lazy(() => import("@/pages/cases/CaseDetailPage"));
+const HearingsListPage = lazy(
+  () => import("@/pages/hearings/HearingsListPage")
+);
+const DocumentsPage = lazy(() => import("@/pages/documents/DocumentsPage"));
+const CourtsListPage = lazy(() => import("@/pages/courts/courtsListPage"));
+const AdvocatesListPage = lazy(
+  () => import("@/pages/advocate/AdvocateListPage")
+);
+const UserManagementPage = lazy(
+  () => import("@/pages/admin/UserManagementPage")
+);
+const AnalyticsPage = lazy(() => import("@/pages/analytics/AnalyticsPage"));
+const PublicCasesPage = lazy(() => import("@/pages/public/PublicCasePage"));
+const PublicCaseDetailPage = lazy(
+  () => import("@/pages/public/PublicCaseDetailPage")
 );
 
 // Loading component
@@ -42,10 +58,16 @@ const AppRoutes = () => {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
-        {/* Public Routes */}
+        {/* ============================================
+            PUBLIC ROUTES (No Authentication Required)
+        ============================================ */}
         <Route path="/" element={<HomePage />} />
+        <Route path="/public/cases" element={<PublicCasesPage />} />
+        <Route path="/public/cases/:id" element={<PublicCaseDetailPage />} />
 
-        {/* Guest Routes (Only for non-authenticated users) */}
+        {/* ============================================
+            GUEST ROUTES (Only for Non-Authenticated Users)
+        ============================================ */}
         <Route
           path="/login"
           element={
@@ -63,7 +85,10 @@ const AppRoutes = () => {
           }
         />
 
-        {/* Protected Routes with Dashboard Layout */}
+        {/* ============================================
+            PROTECTED ROUTES - DASHBOARD
+            (Admin, Judge, Clerk only)
+        ============================================ */}
         <Route
           path="/dashboard"
           element={
@@ -75,7 +100,10 @@ const AppRoutes = () => {
           <Route index element={<DashboardHomePage />} />
         </Route>
 
-        {/* Other Protected Routes (accessible to all authenticated users) */}
+        {/* ============================================
+            PROTECTED ROUTES - CASES
+            (All Authenticated Users)
+        ============================================ */}
         <Route
           path="/cases"
           element={
@@ -85,8 +113,13 @@ const AppRoutes = () => {
           }
         >
           <Route index element={<CasesListPage />} />
+          <Route path=":id" element={<CaseDetailPage />} />
         </Route>
 
+        {/* ============================================
+            PROTECTED ROUTES - HEARINGS
+            (All Authenticated Users)
+        ============================================ */}
         <Route
           path="/hearings"
           element={
@@ -98,6 +131,10 @@ const AppRoutes = () => {
           <Route index element={<HearingsListPage />} />
         </Route>
 
+        {/* ============================================
+            PROTECTED ROUTES - DOCUMENTS
+            (All Authenticated Users)
+        ============================================ */}
         <Route
           path="/documents"
           element={
@@ -106,20 +143,13 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={<PlaceholderPage title="Documents" />} />
+          <Route index element={<DocumentsPage caseId="" />} />
         </Route>
 
-        <Route
-          path="/advocates"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<PlaceholderPage title="Advocates" />} />
-        </Route>
-
+        {/* ============================================
+            PROTECTED ROUTES - COURTS
+            (All Authenticated Users)
+        ============================================ */}
         <Route
           path="/courts"
           element={
@@ -128,20 +158,29 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={<PlaceholderPage title="Courts" />} />
+          <Route index element={<CourtsListPage />} />
         </Route>
 
+        {/* ============================================
+            PROTECTED ROUTES - ADVOCATES
+            (All Authenticated Users)
+        ============================================ */}
         <Route
-          path="/case-types"
+          path="/advocates"
           element={
             <ProtectedRoute>
               <DashboardLayout />
             </ProtectedRoute>
           }
         >
-          <Route index element={<PlaceholderPage title="Case Types" />} />
+          <Route index element={<AdvocatesListPage />} />
         </Route>
 
+
+        {/* ============================================
+            PROTECTED ROUTES - BOOKMARKS
+            (All Authenticated Users)
+        ============================================ */}
         <Route
           path="/bookmarks"
           element={
@@ -153,18 +192,10 @@ const AppRoutes = () => {
           <Route index element={<PlaceholderPage title="My Bookmarks" />} />
         </Route>
 
-        {/* Admin Routes */}
-        <Route
-          path="/analytics"
-          element={
-            <ProtectedRoute allowedRoles={["admin", "judge"]}>
-              <DashboardLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route index element={<PlaceholderPage title="Analytics" />} />
-        </Route>
-
+        {/* ============================================
+            ADMIN ROUTES - USER MANAGEMENT
+            (Admin Only)
+        ============================================ */}
         <Route
           path="/users"
           element={
@@ -173,9 +204,28 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={<PlaceholderPage title="User Management" />} />
+          <Route index element={<UserManagementPage />} />
         </Route>
 
+        {/* ============================================
+            ADMIN/JUDGE ROUTES - ANALYTICS
+            (Admin and Judge Only)
+        ============================================ */}
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute allowedRoles={["admin", "judge"]}>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<AnalyticsPage />} />
+        </Route>
+
+        {/* ============================================
+            SETTINGS & PROFILE
+            (All Authenticated Users)
+        ============================================ */}
         <Route
           path="/settings"
           element={
@@ -198,7 +248,24 @@ const AppRoutes = () => {
           <Route index element={<PlaceholderPage title="Profile" />} />
         </Route>
 
-        {/* Catch all - redirect to home */}
+        {/* ============================================
+            CASE TYPES
+            (All Authenticated Users)
+        ============================================ */}
+        <Route
+          path="/case-types"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<PlaceholderPage title="Case Types" />} />
+        </Route>
+
+        {/* ============================================
+            404 - CATCH ALL
+        ============================================ */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
