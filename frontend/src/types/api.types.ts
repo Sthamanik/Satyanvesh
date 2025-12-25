@@ -245,12 +245,15 @@ export interface Hearing {
 // Document type enum - MATCHES BACKEND
 export enum DocumentType {
   PETITION = "petition",
+  RESPONSE = "response",
   AFFIDAVIT = "affidavit",
   ORDER = "order",
   JUDGMENT = "judgment",
   EVIDENCE = "evidence",
   NOTICE = "notice",
   PLEADING = "pleading",
+  APPLICATION = "application",
+  OTHER = "other",
   MISC = "misc",
 }
 
@@ -259,13 +262,15 @@ export interface Document {
   _id: string;
   caseId: string;
   hearingId: string | null;
-  uploadedBy: string;
+  uploadedBy: User | string;
   title: string;
   type: DocumentType;
   url: string;
+  fileUrl: string; // compatibility with frontend
   publicId: string;
   format: string;
   size: number;
+  fileSize: number; // compatibility with frontend
   description: string | null;
   documentDate: string | null;
   isConfidential: boolean;

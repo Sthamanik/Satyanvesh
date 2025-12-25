@@ -21,7 +21,7 @@ export default function SettingsPage() {
     hearingReminders: true,
   });
 
-  const [preferences, setPreferences] = useState({
+  const [preferences, _setPreferences] = useState({
     theme: "light",
     language: "en",
     timezone: "UTC",

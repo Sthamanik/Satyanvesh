@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import { caseTypesApi } from "@/api/caseTypes.api";
 import { queryKeys } from "@/lib/react-query";
-import type { ApiResponse, CaseType, SearchParams } from "@/types/api.types";
+import type { ApiResponse, CaseType, SearchParams, CaseCategory } from "@/types/api.types";
 import type { AxiosError } from "axios";
 
 /**
@@ -42,7 +42,7 @@ export const useGetCaseTypeBySlug = (slug: string) => {
  * Hook to get case types by category
  */
 export const useGetCaseTypesByCategory = (
-  category: string,
+  category: CaseCategory,
   params?: SearchParams
 ) => {
   return useQuery({

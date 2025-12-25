@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { User, Mail, Phone, Calendar, Shield, Edit, Camera } from "lucide-react";
+import { Mail, Phone, Calendar, Shield, Edit, Camera } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

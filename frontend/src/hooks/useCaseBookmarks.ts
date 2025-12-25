@@ -4,7 +4,6 @@ import { caseBookmarksApi } from "@/api/caseBookmarks.api";
 import { queryKeys } from "@/lib/react-query";
 import type {
   ApiResponse,
-  CaseBookmark,
   SearchParams,
 } from "@/types/api.types";
 import type { AxiosError } from "axios";
@@ -114,7 +113,7 @@ export const useRemoveBookmark = () => {
     mutationFn: async (id: string) => {
       return await caseBookmarksApi.removeBookmark(id);
     },
-    onSuccess: (_, id) => {
+    onSuccess: (_, _id) => {
       queryClient.invalidateQueries({ queryKey: ["bookmarks"] });
       toast.success("Bookmark removed successfully");
     },

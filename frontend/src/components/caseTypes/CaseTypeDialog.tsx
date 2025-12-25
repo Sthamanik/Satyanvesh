@@ -35,9 +35,7 @@ import type { CaseType } from "@/types/api.types";
 const caseTypeSchema = z.object({
   name: z.string().min(1, "Name is required"),
   code: z.string().min(1, "Code is required").max(10, "Code is too long"),
-  category: z.nativeEnum(CaseCategory, {
-    errorMap: () => ({ message: "Category is required" }),
-  }),
+  category: z.nativeEnum(CaseCategory),
   description: z.string().optional(),
 });
 
