@@ -85,6 +85,17 @@ export const useCreateCase = () => {
 };
 
 /**
+ * Hook to get cases created by the current user
+ */
+export const useGetMyCases = (params?: SearchParams) => {
+  return useQuery({
+    queryKey: queryKeys.cases.myCases(params as Record<string, unknown>),
+    queryFn: () => casesApi.getMyCases(params),
+    placeholderData: (prev) => prev,
+  });
+};
+
+/**
  * Hook to update case
  */
 export const useUpdateCase = (id: string) => {

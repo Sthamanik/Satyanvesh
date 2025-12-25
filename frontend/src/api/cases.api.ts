@@ -169,4 +169,15 @@ export const casesApi = {
     >("/cases/statistics");
     return response.data;
   },
+
+  /**
+   * Get cases assigned to me
+   */
+  getMyCases: async (params?: SearchParams): Promise<ApiResponse<{ cases: Case[]; pagination: any }>> => {
+    const response = await axiosInstance.get<ApiResponse<{ cases: Case[]; pagination: any }>>(
+      "/cases/my-cases",
+      { params }
+    );
+    return response.data;
+  },
 };

@@ -13,6 +13,7 @@ import {
   getCasesByUser,
   searchCases,
   getCaseStatistics,
+  getMyCases,
 } from "@controllers/case.controller.js";
 import { validate } from "@middlewares/validate.middleware.js";
 import { verifyJWT, authorizeRoles } from "@middlewares/auth.middleware.js";
@@ -59,6 +60,9 @@ router.get("/:id", readLimiter, validate(getCaseByIdSchema), getCaseById);
 
 // Admin/Judge/Clerk routes
 router.use(verifyJWT);
+
+router.get("/my-cases", getMyCases);
+
 router.post(
   "/",
   authorizeRoles("admin", "judge", "clerk"),

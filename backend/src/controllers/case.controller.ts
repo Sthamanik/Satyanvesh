@@ -152,3 +152,16 @@ export const getCaseStatistics = asyncHandler(
       );
   }
 );
+
+// Get cases asssrigned to me
+export const getMyCases = asyncHandler(async (req: Request, res: Response) => {
+  const data = await CaseService.getMyCases(
+    req.user!._id,
+    req.user!.role,
+    req.query
+  );
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, data, "My cases fetched successfully"));
+});

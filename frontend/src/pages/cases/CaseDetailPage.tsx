@@ -8,8 +8,11 @@ import {
   Gavel,
   Edit,
   Trash2,
+  Bookmark,
+  BookmarkCheck,
 } from "lucide-react";
 import { useGetCaseById } from "@/hooks/useCases";
+import { useCheckBookmark, useAddBookmark, useRemoveBookmarkByCase } from "@/hooks/useCaseBookmarks";
 import { formatDate, getStatusColor, cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -18,13 +21,26 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DocumentsPage from "@/pages/documents/DocumentsPage";
 import CaseHearingsPage from "../hearings/CaseHearingsPage";
+import CasePartiesPage from "../caseParties/CasePartiesPage";
 
 export default function CaseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { isAdmin, isJudge, isClerk } = useUserRole();
   const { data, isLoading, error } = useGetCaseById(id!);
+  const { data: bookmarkData } = useCheckBookmark(id!);
+  const addBookmarkMutation = useAddBookmark();
+  const removeBookmarkMutation = useRemoveBookmarkByCase();
 
   const caseData = data?.data;
+  const isBookmarked = bookmarkData?.data?.isBookmarked || false;
+
+  const handleToggleBookmark = async () => {
+    if (isBookmarked) {
+      await removeBookmarkMutation.mutateAsync(id!);
+    } else {
+      await addBookmarkMutation.mutateAsync({ caseId: id! });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -55,22 +71,37 @@ export default function CaseDetailPage() {
             Back to Cases
           </Button>
         </Link>
-        {(isAdmin || isJudge || isClerk) && (
-          <div className="flex gap-2">
-            <Link to={`/cases/${id}/edit`}>
-              <Button variant="outline" size="sm">
-                <Edit className="w-4 h-4 mr-2" />
-                Edit
-              </Button>
-            </Link>
-            {isAdmin && (
-              <Button variant="outline" size="sm" className="text-status-error">
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </Button>
+        <div className="flex gap-2">
+          <Button
+            variant={isBookmarked ? "default" : "outline"}
+            size="sm"
+            onClick={handleToggleBookmark}
+            disabled={addBookmarkMutation.isPending || removeBookmarkMutation.isPending}
+          >
+            {isBookmarked ? (
+              <BookmarkCheck className="w-4 h-4 mr-2" />
+            ) : (
+              <Bookmark className="w-4 h-4 mr-2" />
             )}
-          </div>
-        )}
+            {isBookmarked ? "Bookmarked" : "Bookmark"}
+          </Button>
+          {(isAdmin || isJudge || isClerk) && (
+            <>
+              <Link to={`/cases/${id}/edit`}>
+                <Button variant="outline" size="sm">
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit
+                </Button>
+              </Link>
+              {isAdmin && (
+                <Button variant="outline" size="sm" className="text-status-error">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete
+                </Button>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Case Header */}
@@ -130,9 +161,9 @@ export default function CaseDetailPage() {
                   <p className="text-sm font-semibold">Court</p>
                 </div>
                 <p className="text-text-primary ml-6">
-                  {typeof caseData.court === "string"
-                    ? caseData.court
-                    : caseData.court?.name || "N/A"}
+                  {typeof caseData.courtId === "string"
+                    ? caseData.courtId
+                    : (caseData.courtId as any)?.name || "N/A"}
                 </p>
               </div>
 
@@ -142,9 +173,9 @@ export default function CaseDetailPage() {
                   <p className="text-sm font-semibold">Case Type</p>
                 </div>
                 <p className="text-text-primary ml-6">
-                  {typeof caseData.caseType === "string"
-                    ? caseData.caseType
-                    : caseData.caseType?.name || "N/A"}
+                  {typeof caseData.caseTypeId === "string"
+                    ? caseData.caseTypeId
+                    : (caseData.caseTypeId as any)?.name || "N/A"}
                 </p>
               </div>
 
@@ -229,13 +260,7 @@ export default function CaseDetailPage() {
         </TabsContent>
 
         <TabsContent value="parties">
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-text-secondary">
-                Case parties will be displayed here
-              </p>
-            </CardContent>
-          </Card>
+          <CasePartiesPage caseId={caseData._id} />
         </TabsContent>
 
         <TabsContent value="hearings">

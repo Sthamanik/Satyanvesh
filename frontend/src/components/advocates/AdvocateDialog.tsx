@@ -29,7 +29,7 @@ const advocateSchema = z.object({
   barCouncilId: z.string().min(1, "Bar Council ID is required").toUpperCase(),
   licenseNumber: z.string().min(1, "License number is required").toUpperCase(),
   specialization: z.string().optional(), // We'll handle CSV string -> array
-  experience: z.coerce.number().min(0, "Experience cannot be negative"),
+  experience: z.number().min(0, "Experience cannot be negative"),
   firmName: z.string().optional(),
   firmAddress: z.string().optional(),
   enrollmentDate: z.string().min(1, "Enrollment Date is required"),

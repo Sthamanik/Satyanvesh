@@ -4,13 +4,13 @@ import {
   Bookmark,
   BookmarkCheck,
   Calendar,
-  Clock,
   Gavel,
   Trash2,
   Eye,
 } from "lucide-react";
-import { useGetUserBookmarks, useRemoveBookmark } from "@/hooks/useCaseBookmarks";
-import { formatDate, cn } from "@/lib/utils";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import axiosInstance from "@/lib/axios";
+import { formatDate } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,27 +25,60 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import ApiErrorFallback from "@/components/shared/ApiErrorFallback";
-import type { CaseBookmark } from "@/types/api.types";
+import toast from "react-hot-toast";
+
+interface CaseBookmark {
+  _id: string;
+  userId: string;
+  caseId: {
+    _id: string;
+    caseNumber: string;
+    title: string;
+    status: string;
+    nextHearingDate?: string;
+  };
+  notes?: string;
+  createdAt: string;
+}
 
 export default function BookmarksPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedBookmarkId, setSelectedBookmarkId] = useState<string | null>(
-    null
-  );
+  const [selectedBookmarkId, setSelectedBookmarkId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
-  const { data, isLoading, error, refetch } = useGetUserBookmarks();
-  const removeMutation = useRemoveBookmark();
+  // Fetch bookmarks
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ["user-bookmarks"],
+    queryFn: async () => {
+      const response = await axiosInstance.get("/case-bookmarks/my-bookmarks");
+      return response.data;
+    },
+  });
 
-  const bookmarks: CaseBookmark[] = Array.isArray(data?.data) ? data.data : [];
+  // Delete bookmark mutation
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await axiosInstance.delete(`/case-bookmarks/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-bookmarks"] });
+      toast.success("Bookmark removed successfully");
+      setDeleteDialogOpen(false);
+      setSelectedBookmarkId(null);
+    },
+    onError: () => {
+      toast.error("Failed to remove bookmark");
+    },
+  });
 
   const handleDelete = async () => {
     if (selectedBookmarkId) {
-      await removeMutation.mutateAsync(selectedBookmarkId);
-      setDeleteDialogOpen(false);
-      setSelectedBookmarkId(null);
+      await deleteMutation.mutateAsync(selectedBookmarkId);
     }
   };
+
+  // Extract bookmarks from response
+  const bookmarks: CaseBookmark[] = data?.data || [];
 
   if (error) {
     return (
@@ -56,11 +89,14 @@ export default function BookmarksPage() {
             Manage your bookmarked cases
           </p>
         </div>
-        <ApiErrorFallback
-          error={error}
-          resetError={() => refetch()}
-          showBackButton={false}
-        />
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-status-error mb-4">Failed to load bookmarks</p>
+            <Button onClick={() => refetch()} variant="outline">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -119,7 +155,7 @@ export default function BookmarksPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {bookmarks.map((bookmark) => {
-            const caseData = bookmark.case;
+            const caseData = bookmark.caseId;
             if (!caseData) return null;
 
             return (
@@ -227,4 +263,3 @@ export default function BookmarksPage() {
     </div>
   );
 }
-

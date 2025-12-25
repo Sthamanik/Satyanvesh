@@ -29,6 +29,7 @@ import casePartyRoute from "@routes/caseParty.route.js";
 import documentRoute from "@routes/document.route.js";
 import caseBookmarkRoute from "@routes/caseBookmark.route.js";
 import caseViewRoute from "@routes/caseView.route.js";
+import notificationRoute from "@routes/notification.route.js";
 
 // Health check endpoint
 app.get("/health", (req, res) => {
@@ -51,6 +52,7 @@ app.use("/api/v1/case-parties", casePartyRoute);
 app.use("/api/v1/documents", documentRoute);
 app.use("/api/v1/case-bookmarks", caseBookmarkRoute);
 app.use("/api/v1/case-views", caseViewRoute);
+app.use("/api/v1/notifications", notificationRoute);
 
 // 404 handler for unknown routes
 app.use((req, res) => {

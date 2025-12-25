@@ -1,4 +1,4 @@
-import { Menu, Search, Bell, LogOut, User, Settings } from "lucide-react";
+import { Menu, Search, LogOut, User, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useUser } from "@/stores/auth.store";
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { NotificationDropdown } from "../notifications/NotificationDropdown";
 
 interface DashboardHeaderProps {
   onMenuClick: () => void;
@@ -67,53 +67,7 @@ export default function DashboardHeader({ onMenuClick }: DashboardHeaderProps) {
         {/* Right: Notifications & User Menu */}
         <div className="flex items-center gap-3">
           {/* Notifications */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="w-5 h-5" />
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-status-error">
-                  3
-                </Badge>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <div className="max-h-96 overflow-y-auto">
-                <div className="p-3 hover:bg-background-secondary cursor-pointer border-b">
-                  <p className="text-sm font-medium">New hearing scheduled</p>
-                  <p className="text-xs text-text-secondary mt-1">
-                    Case #2024-123 hearing on Jan 15
-                  </p>
-                  <p className="text-xs text-text-secondary mt-1">
-                    2 hours ago
-                  </p>
-                </div>
-                <div className="p-3 hover:bg-background-secondary cursor-pointer border-b">
-                  <p className="text-sm font-medium">Document uploaded</p>
-                  <p className="text-xs text-text-secondary mt-1">
-                    New evidence added to Case #2024-098
-                  </p>
-                  <p className="text-xs text-text-secondary mt-1">
-                    5 hours ago
-                  </p>
-                </div>
-                <div className="p-3 hover:bg-background-secondary cursor-pointer">
-                  <p className="text-sm font-medium">Case status updated</p>
-                  <p className="text-xs text-text-secondary mt-1">
-                    Case #2024-067 moved to "Under Hearing"
-                  </p>
-                  <p className="text-xs text-text-secondary mt-1">1 day ago</p>
-                </div>
-              </div>
-              <DropdownMenuSeparator />
-              <div className="p-2">
-                <Button variant="ghost" className="w-full text-sm">
-                  View all notifications
-                </Button>
-              </div>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <NotificationDropdown />
 
           {/* User Menu */}
           <DropdownMenu>

@@ -39,7 +39,7 @@ export default function CasesListPage() {
     page,
     limit,
     search: searchQuery,
-    filter: statusFilter !== "all" ? { status: statusFilter } : undefined,
+    status: statusFilter !== "all" ? statusFilter : undefined,
   });
 
   // Safely extract cases array
@@ -265,9 +265,9 @@ export default function CasesListPage() {
                       <div className="flex items-center gap-2">
                         <Building2 className="w-3 h-3" />
                         <span>
-                          {typeof caseItem.court === "string"
-                            ? caseItem.court
-                            : caseItem.court?.name || "N/A"}
+                          {typeof caseItem.courtId === "string"
+                            ? caseItem.courtId
+                            : (caseItem.courtId as any)?.name || "N/A"}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">

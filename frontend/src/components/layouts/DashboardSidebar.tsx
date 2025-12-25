@@ -44,6 +44,12 @@ const navigation: NavItem[] = [
     icon: Briefcase,
   },
   {
+    name: "My Cases",
+    href: "/my-cases",
+    icon: Briefcase,
+    roles: ["judge", "lawyer", "litigant"],
+  },
+  {
     name: "Hearings",
     href: "/hearings",
     icon: Calendar,

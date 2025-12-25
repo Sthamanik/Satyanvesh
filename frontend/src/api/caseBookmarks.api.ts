@@ -132,4 +132,3 @@ export const caseBookmarksApi = {
     return response.data;
   },
 };
-

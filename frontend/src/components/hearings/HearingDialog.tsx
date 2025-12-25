@@ -104,7 +104,7 @@ export default function HearingDialog({
   const { data: casesData } = useQuery({
     queryKey: ["cases-list"],
     queryFn: async () => {
-      const res = await axiosInstance.get<{ data: CaseItem[] }>("/cases", {
+      const res = await axiosInstance.get<{ data: { cases: CaseItem[] } }>("/cases", {
         params: { limit: 100 },
       });
       return res.data;
@@ -112,7 +112,7 @@ export default function HearingDialog({
     enabled: open && !initialData && !caseId, // Only fetch if we need to select a case
   });
 
-  const cases: CaseItem[] = casesData?.data ?? [];
+  const cases: CaseItem[] = casesData?.data?.cases ?? [];
 
   /* ---------------- Form ---------------- */
 

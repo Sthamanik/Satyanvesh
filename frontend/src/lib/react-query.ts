@@ -142,6 +142,7 @@ export const queryKeys = {
     byUser: (userId: string) => ["cases", "user", userId] as const,
     search: (query: string) => ["cases", "search", query] as const,
     statistics: ["cases", "statistics"] as const,
+    myCases: (params?: Record<string, unknown>) => ["cases", "my-cases", params] as const,
   },
 
   // Courts
