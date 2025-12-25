@@ -10,9 +10,3 @@ export const useGetCaseParties = (caseId: string) => {
   });
 };
 
-export const useGetMyAssignedCases = () => {
-  return useQuery({
-    queryKey: ["my-assigned-cases"],
-    queryFn: () => casePartiesApi.getMyAssignedCases(),
-  });
-};

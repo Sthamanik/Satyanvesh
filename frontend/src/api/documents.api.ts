@@ -26,8 +26,8 @@ export const documentsApi = {
     payload: UploadDocumentPayload
   ): Promise<ApiResponse<Document>> => {
     const formData = new FormData();
-    formData.append("case", payload.caseId);
-    if (payload.hearingId) formData.append("hearing", payload.hearingId);
+    formData.append("caseId", payload.caseId);
+    if (payload.hearingId) formData.append("hearingId", payload.hearingId);
     formData.append("title", payload.title);
     formData.append("type", payload.type);
     formData.append("isPublic", String(payload.isPublic));
@@ -133,6 +133,18 @@ export const documentsApi = {
     const response = await axiosInstance.delete<ApiResponse<null>>(
       `/documents/${id}`
     );
+    return response.data;
+  },
+
+  /**
+   * Get document statistics (admin/judge only)
+   */
+  getDocumentStatistics: async (): Promise<
+    ApiResponse<Record<string, unknown>>
+  > => {
+    const response = await axiosInstance.get<
+      ApiResponse<Record<string, unknown>>
+    >("/documents/statistics");
     return response.data;
   },
 };

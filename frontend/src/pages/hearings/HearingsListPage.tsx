@@ -10,7 +10,7 @@ import {
   Gavel,
   RefreshCw,
 } from "lucide-react";
-import { useGetHearings } from "@/hooks/useHearings";
+import { useGetUpcomingHearings } from "@/hooks/useHearings";
 import { formatDate, cn } from "@/lib/utils";
 import { useUserRole } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -35,8 +35,8 @@ export default function HearingsListPage() {
   const [page, setPage] = useState(1);
   const limit = 12;
 
-  // Fetch hearings with filters
-  const { data, isLoading, error, refetch, isRefetching } = useGetHearings({
+  // Fetch upcoming hearings with filters
+  const { data, isLoading, error, refetch, isRefetching } = useGetUpcomingHearings({
     page,
     limit,
     filter: statusFilter !== "all" ? { status: statusFilter } : undefined,
@@ -48,9 +48,9 @@ export default function HearingsListPage() {
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       scheduled: "bg-blue-100 text-blue-800",
-      in_progress: "bg-purple-100 text-purple-800",
+      ongoing: "bg-purple-100 text-purple-800",
       completed: "bg-green-100 text-green-800",
-      postponed: "bg-yellow-100 text-yellow-800",
+      adjourned: "bg-yellow-100 text-yellow-800",
       cancelled: "bg-red-100 text-red-800",
     };
     return colors[status] || "bg-gray-100 text-gray-800";
@@ -177,14 +177,14 @@ export default function HearingsListPage() {
                 <SelectItem value={HearingStatus.SCHEDULED}>
                   Scheduled
                 </SelectItem>
-                <SelectItem value={HearingStatus.IN_PROGRESS}>
-                  In Progress
+                <SelectItem value={HearingStatus.ONGOING}>
+                  Ongoing
                 </SelectItem>
                 <SelectItem value={HearingStatus.COMPLETED}>
                   Completed
                 </SelectItem>
-                <SelectItem value={HearingStatus.POSTPONED}>
-                  Postponed
+                <SelectItem value={HearingStatus.ADJOURNED}>
+                  Adjourned
                 </SelectItem>
                 <SelectItem value={HearingStatus.CANCELLED}>
                   Cancelled

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useParams } from "react-router-dom";
 import { FileText, Upload, Download, Eye, Trash2, Filter } from "lucide-react";
 import { useGetCaseDocuments, useDeleteDocument } from "@/hooks/useDocument";
 import { formatDate, formatFileSize, cn } from "@/lib/utils";
@@ -35,15 +36,26 @@ import DocumentUploadDialog from "@/components/documents/DocumentUploadDialog";
 import { DocumentType } from "@/types/api.types";
 
 interface DocumentsPageProps {
-  caseId: string;
+  caseId?: string;
 }
 
-export default function DocumentsPage({ caseId }: DocumentsPageProps) {
+export default function DocumentsPage({ caseId: propCaseId }: DocumentsPageProps = {}) {
+  const { id: routeCaseId } = useParams<{ id: string }>();
+  const caseId = propCaseId || routeCaseId;
+  
   const { isAdmin, isJudge, isClerk, isLawyer } = useUserRole();
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>("all");
+
+  if (!caseId) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-text-secondary">Case ID is required</p>
+      </div>
+    );
+  }
 
   const { data, isLoading, error } = useGetCaseDocuments(caseId);
   const deleteMutation = useDeleteDocument();

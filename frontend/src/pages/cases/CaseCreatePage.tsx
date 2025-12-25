@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { useCreateCase } from "@/hooks/useCases";
 import { useGetCourts } from "@/hooks/useCourts";
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
+import axiosInstance from "@/lib/axios";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,104 +22,53 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
-import { CaseStatus } from "@/types/api.types";
+import { CaseStatus, CasePriority, CaseStage, type Court } from "@/types/api.types";
 
-/* ------------------------------------------------------------------ */
-/* Types */
-/* ------------------------------------------------------------------ */
-
-interface Court {
-  _id: string;
-  name: string;
-}
-
-interface CaseType {
-  _id: string;
-  name: string;
-  category: string;
-}
-
-interface Judge {
-  _id: string;
-  fullName: string;
-}
-
-/* ------------------------------------------------------------------ */
-/* Constants */
-/* ------------------------------------------------------------------ */
-
-const API_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
-
-/* ------------------------------------------------------------------ */
-/* Zod Schema (NO nativeEnum – NOT deprecated) */
-/* ------------------------------------------------------------------ */
-
+// FIXED Schema to match backend model exactly
 const caseSchema = z.object({
   caseNumber: z.string().min(1, "Case number is required"),
   title: z.string().min(1, "Title is required").max(200),
   description: z.string().optional(),
+  caseTypeId: z.string().min(1, "Case type is required"),
+  courtId: z.string().min(1, "Court is required"),
   filingDate: z.string().min(1, "Filing date is required"),
   status: z.enum([
-    CaseStatus.REGISTERED,
-    CaseStatus.PENDING,
-    CaseStatus.UNDER_HEARING,
-    CaseStatus.RESERVED,
-    CaseStatus.DECIDED,
-    CaseStatus.DISPOSED,
+    CaseStatus.FILED,
+    CaseStatus.ADMITTED,
+    CaseStatus.HEARING,
+    CaseStatus.JUDGMENT,
+    CaseStatus.CLOSED,
+    CaseStatus.ARCHIVED,
   ]),
-  caseType: z.string().min(1, "Case type is required"),
-  court: z.string().min(1, "Court is required"),
-  judge: z.string().optional(),
+  priority: z.enum([
+    CasePriority.NORMAL,
+    CasePriority.URGENT,
+    CasePriority.HIGH,
+  ]),
+  stage: z.enum([CaseStage.PRELIMINARY, CaseStage.TRIAL, CaseStage.FINAL]),
   isPublic: z.boolean(),
+  isSensitive: z.boolean(),
 });
 
 type CaseFormData = z.infer<typeof caseSchema>;
-
-/* ------------------------------------------------------------------ */
-/* Component */
-/* ------------------------------------------------------------------ */
 
 export default function CaseCreatePage() {
   const navigate = useNavigate();
   const createMutation = useCreateCase();
 
-  /* ---------------------------- Fetch Courts ---------------------------- */
-
+  // Fetch Courts
   const { data: courtsData } = useGetCourts();
-  const courts: Court[] = courtsData?.data ?? [];
+  const courts = courtsData?.data ?? [];
 
-  /* -------------------------- Fetch Case Types -------------------------- */
-
-  const { data: caseTypesData } = useQuery<{ data: CaseType[] }>({
+  // Fetch Case Types
+  const { data: caseTypesData } = useQuery({
     queryKey: ["case-types"],
     queryFn: async () => {
-      const token = localStorage.getItem("accessToken");
-      const res = await axios.get(`${API_URL}/case-types`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await axiosInstance.get("/case-types");
       return res.data;
     },
   });
-
   const caseTypes = caseTypesData?.data ?? [];
-
-  /* ---------------------------- Fetch Judges ---------------------------- */
-
-  const { data: judgesData } = useQuery<{ data: Judge[] }>({
-    queryKey: ["judges"],
-    queryFn: async () => {
-      const token = localStorage.getItem("accessToken");
-      const res = await axios.get(`${API_URL}/users/role/judge`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return res.data;
-    },
-  });
-
-  const judges = judgesData?.data ?? [];
-
-  /* ---------------------------- React Hook Form ---------------------------- */
 
   const {
     register,
@@ -129,13 +78,14 @@ export default function CaseCreatePage() {
   } = useForm<CaseFormData>({
     resolver: zodResolver(caseSchema),
     defaultValues: {
-      status: CaseStatus.REGISTERED,
-      isPublic: false,
+      status: CaseStatus.FILED,
+      priority: CasePriority.NORMAL,
+      stage: CaseStage.PRELIMINARY,
+      isPublic: true,
+      isSensitive: false,
       filingDate: new Date().toISOString().split("T")[0],
     },
   });
-
-  /* ---------------------------- Submit ---------------------------- */
 
   const onSubmit = async (data: CaseFormData) => {
     try {
@@ -145,10 +95,6 @@ export default function CaseCreatePage() {
       console.error("Create case error:", err);
     }
   };
-
-  /* ------------------------------------------------------------------ */
-  /* UI */
-  /* ------------------------------------------------------------------ */
 
   return (
     <div className="space-y-6">
@@ -161,8 +107,12 @@ export default function CaseCreatePage() {
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold">Create New Case</h1>
-          <p className="text-gray-600">Register a new case</p>
+          <h1 className="text-3xl font-bold text-text-primary">
+            Create New Case
+          </h1>
+          <p className="text-text-secondary">
+            Register a new case in the system
+          </p>
         </div>
       </div>
 
@@ -175,142 +125,290 @@ export default function CaseCreatePage() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             {/* Case Number & Filing Date */}
             <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <Label>Case Number *</Label>
-                <Input {...register("caseNumber")} />
+              <div className="space-y-2">
+                <Label htmlFor="caseNumber">
+                  Case Number <span className="text-status-error">*</span>
+                </Label>
+                <Input
+                  id="caseNumber"
+                  placeholder="e.g., CASE/2024/001"
+                  {...register("caseNumber")}
+                  className={errors.caseNumber ? "border-status-error" : ""}
+                />
                 {errors.caseNumber && (
-                  <p className="text-red-600 text-sm">
+                  <p className="text-sm text-status-error">
                     {errors.caseNumber.message}
                   </p>
                 )}
               </div>
 
-              <div>
-                <Label>Filing Date *</Label>
-                <Input type="date" {...register("filingDate")} />
+              <div className="space-y-2">
+                <Label htmlFor="filingDate">
+                  Filing Date <span className="text-status-error">*</span>
+                </Label>
+                <Input
+                  id="filingDate"
+                  type="date"
+                  {...register("filingDate")}
+                  className={errors.filingDate ? "border-status-error" : ""}
+                />
+                {errors.filingDate && (
+                  <p className="text-sm text-status-error">
+                    {errors.filingDate.message}
+                  </p>
+                )}
               </div>
             </div>
 
             {/* Title */}
-            <div>
-              <Label>Title *</Label>
-              <Input {...register("title")} />
+            <div className="space-y-2">
+              <Label htmlFor="title">
+                Case Title <span className="text-status-error">*</span>
+              </Label>
+              <Input
+                id="title"
+                placeholder="Enter case title"
+                {...register("title")}
+                className={errors.title ? "border-status-error" : ""}
+              />
+              {errors.title && (
+                <p className="text-sm text-status-error">
+                  {errors.title.message}
+                </p>
+              )}
             </div>
 
             {/* Description */}
-            <div>
-              <Label>Description</Label>
-              <Textarea rows={4} {...register("description")} />
+            <div className="space-y-2">
+              <Label htmlFor="description">Description (Optional)</Label>
+              <Textarea
+                id="description"
+                rows={4}
+                placeholder="Brief description of the case..."
+                {...register("description")}
+              />
             </div>
 
             {/* Court & Case Type */}
             <div className="grid md:grid-cols-2 gap-6">
-              <Controller
-                name="court"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select court" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {courts.map((court) => (
-                        <SelectItem key={court._id} value={court._id}>
-                          {court.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-
-              <Controller
-                name="caseType"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select case type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {caseTypes.map((type) => (
-                        <SelectItem key={type._id} value={type._id}>
-                          {type.name} ({type.category})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-
-            {/* Status & Judge */}
-            <div className="grid md:grid-cols-2 gap-6">
-              <Controller
-                name="status"
-                control={control}
-                render={({ field }) => (
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.values(CaseStatus).map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {status.replace("_", " ")}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-
-              <Controller
-                name="judge"
-                control={control}
-                render={({ field }) => (
-                  <Select
-                    value={field.value ?? ""}
-                    onValueChange={field.onChange}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select judge" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">None</SelectItem>
-                      {judges.map((judge) => (
-                        <SelectItem key={judge._id} value={judge._id}>
-                          {judge.fullName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              />
-            </div>
-
-            {/* Public */}
-            <Controller
-              name="isPublic"
-              control={control}
-              render={({ field }) => (
-                <Switch
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
+              <div className="space-y-2">
+                <Label>
+                  Court <span className="text-status-error">*</span>
+                </Label>
+                <Controller
+                  name="courtId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger
+                        className={errors.courtId ? "border-status-error" : ""}
+                      >
+                        <SelectValue placeholder="Select court" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {courts.map((court: Court) => (
+                          <SelectItem key={court._id} value={court._id}>
+                            {court.name} ({court.type})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 />
-              )}
-            />
+                {errors.courtId && (
+                  <p className="text-sm text-status-error">
+                    {errors.courtId.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label>
+                  Case Type <span className="text-status-error">*</span>
+                </Label>
+                <Controller
+                  name="caseTypeId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger
+                        className={
+                          errors.caseTypeId ? "border-status-error" : ""
+                        }
+                      >
+                        <SelectValue placeholder="Select case type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {caseTypes.map(
+                          (type: {
+                            _id: string;
+                            name: string;
+                            category: string;
+                          }) => (
+                            <SelectItem key={type._id} value={type._id}>
+                              {type.name} - {type.category}
+                            </SelectItem>
+                          )
+                        )}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.caseTypeId && (
+                  <p className="text-sm text-status-error">
+                    {errors.caseTypeId.message}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Status, Priority, Stage */}
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Controller
+                  name="status"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={CaseStatus.FILED}>Filed</SelectItem>
+                        <SelectItem value={CaseStatus.ADMITTED}>
+                          Admitted
+                        </SelectItem>
+                        <SelectItem value={CaseStatus.HEARING}>
+                          Hearing
+                        </SelectItem>
+                        <SelectItem value={CaseStatus.JUDGMENT}>
+                          Judgment
+                        </SelectItem>
+                        <SelectItem value={CaseStatus.CLOSED}>
+                          Closed
+                        </SelectItem>
+                        <SelectItem value={CaseStatus.ARCHIVED}>
+                          Archived
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Priority</Label>
+                <Controller
+                  name="priority"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={CasePriority.NORMAL}>
+                          Normal
+                        </SelectItem>
+                        <SelectItem value={CasePriority.URGENT}>
+                          Urgent
+                        </SelectItem>
+                        <SelectItem value={CasePriority.HIGH}>High</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Stage</Label>
+                <Controller
+                  name="stage"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={CaseStage.PRELIMINARY}>
+                          Preliminary
+                        </SelectItem>
+                        <SelectItem value={CaseStage.TRIAL}>Trial</SelectItem>
+                        <SelectItem value={CaseStage.FINAL}>Final</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* Toggles */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 bg-background-secondary rounded-lg">
+                <div>
+                  <Label htmlFor="isPublic" className="text-base font-medium">
+                    Public Case
+                  </Label>
+                  <p className="text-sm text-text-secondary">
+                    Make this case visible to the public
+                  </p>
+                </div>
+                <Controller
+                  name="isPublic"
+                  control={control}
+                  render={({ field }) => (
+                    <Switch
+                      id="isPublic"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
+                />
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-background-secondary rounded-lg">
+                <div>
+                  <Label
+                    htmlFor="isSensitive"
+                    className="text-base font-medium"
+                  >
+                    Sensitive Case
+                  </Label>
+                  <p className="text-sm text-text-secondary">
+                    Mark this case as sensitive (restricted access)
+                  </p>
+                </div>
+                <Controller
+                  name="isSensitive"
+                  control={control}
+                  render={({ field }) => (
+                    <Switch
+                      id="isSensitive"
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  )}
+                />
+              </div>
+            </div>
 
             {/* Actions */}
-            <div className="flex gap-4">
+            <div className="flex gap-4 pt-4">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => navigate("/cases")}
+                disabled={isSubmitting}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-brand-primary hover:bg-brand-primary/90"
+              >
                 {isSubmitting ? "Creating..." : "Create Case"}
               </Button>
             </div>

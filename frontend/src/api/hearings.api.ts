@@ -13,19 +13,6 @@ import type {
  */
 export const hearingsApi = {
   /**
-   * Get all hearings with pagination and filters
-   */
-  getAllHearings: async (
-    params?: SearchParams
-  ): Promise<ApiResponse<Hearing[]>> => {
-    const response = await axiosInstance.get<ApiResponse<Hearing[]>>(
-      "/hearings",
-      { params }
-    );
-    return response.data;
-  },
-
-  /**
    * Get case hearings
    */
   getCaseHearings: async (
@@ -140,10 +127,12 @@ export const hearingsApi = {
   /**
    * Get hearing statistics (admin/judge only)
    */
-  getHearingStatistics: async (): Promise<ApiResponse<HearingStatus>> => {
-    const response = await axiosInstance.get<ApiResponse<HearingStatus>>(
-      "/hearings/statistics"
-    );
+  getHearingStatistics: async (): Promise<
+    ApiResponse<Record<string, unknown>>
+  > => {
+    const response = await axiosInstance.get<
+      ApiResponse<Record<string, unknown>>
+    >("/hearings/statistics");
     return response.data;
   },
 };

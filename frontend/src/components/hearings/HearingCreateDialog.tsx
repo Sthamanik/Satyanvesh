@@ -1,7 +1,12 @@
-import { useForm } from "react-hook-form";
+import { useEffect } from "react";
+import { useForm, Controller, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useQuery } from "@tanstack/react-query";
+
+import axiosInstance from "@/lib/axios";
 import { useCreateHearing } from "@/hooks/useHearings";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,18 +26,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { HearingStatus } from "@/types/api.types";
+
+import { HearingPurpose, HearingStatus } from "@/types/api.types";
+
+/* ------------------------------------------------------------------ */
+/* Types */
+/* ------------------------------------------------------------------ */
+
+interface Judge {
+  _id: string;
+  fullName: string;
+}
+
+interface CaseItem {
+  _id: string;
+  caseNumber: string;
+  title: string;
+}
+
+/* ------------------------------------------------------------------ */
+/* Schema */
+/* ------------------------------------------------------------------ */
 
 const hearingSchema = z.object({
-  case: z.string().min(1, "Case is required"),
+  caseId: z.string().min(1, "Case is required"),
+  hearingNumber: z.string().min(1, "Hearing number is required"),
   hearingDate: z.string().min(1, "Hearing date is required"),
   hearingTime: z.string().min(1, "Hearing time is required"),
+  judgeId: z.string().min(1, "Judge is required"),
   courtRoom: z.string().optional(),
-  judge: z.string().min(1, "Judge is required"),
-  status: z.nativeEnum(HearingStatus).optional(),
-  purpose: z.string().optional(),
-  remarks: z.string().optional(),
+  purpose: z.nativeEnum(HearingPurpose),
+  status: z.nativeEnum(HearingStatus),
+  notes: z.string().optional(),
   nextHearingDate: z.string().optional(),
+  adjournmentReason: z.string().optional(),
 });
 
 type HearingFormData = z.infer<typeof hearingSchema>;
@@ -40,8 +67,12 @@ type HearingFormData = z.infer<typeof hearingSchema>;
 interface HearingCreateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  caseId?: string; // If creating from case detail page
+  caseId?: string;
 }
+
+/* ------------------------------------------------------------------ */
+/* Component */
+/* ------------------------------------------------------------------ */
 
 export default function HearingCreateDialog({
   open,
@@ -50,30 +81,88 @@ export default function HearingCreateDialog({
 }: HearingCreateDialogProps) {
   const createMutation = useCreateHearing();
 
+  /* ---------------- Queries ---------------- */
+
+  const { data: judgesData } = useQuery({
+    queryKey: ["judges"],
+    queryFn: async () => {
+      const res = await axiosInstance.get<{ data: Judge[] }>(
+        "/users/role/judge"
+      );
+      return res.data;
+    },
+  });
+
+  const judges: Judge[] = judgesData?.data ?? [];
+
+  const { data: casesData } = useQuery({
+    queryKey: ["cases-list"],
+    queryFn: async () => {
+      const res = await axiosInstance.get<{ data: CaseItem[] }>("/cases", {
+        params: { limit: 100 },
+      });
+      return res.data;
+    },
+    enabled: !caseId,
+  });
+
+  const cases: CaseItem[] = casesData?.data ?? [];
+
+  /* ---------------- Form ---------------- */
+
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-    setValue,
+    control,
     reset,
   } = useForm<HearingFormData>({
     resolver: zodResolver(hearingSchema),
     defaultValues: {
-      case: caseId || "",
+      caseId: caseId ?? "",
       status: HearingStatus.SCHEDULED,
+      purpose: HearingPurpose.PRELIMINARY,
     },
   });
 
+  /* ---------------- Dynamic Defaults (PURE SAFE) ---------------- */
+
+  useEffect(() => {
+    if (!open) return;
+
+    reset({
+      caseId: caseId ?? "",
+      status: HearingStatus.SCHEDULED,
+      purpose: HearingPurpose.PRELIMINARY,
+      hearingNumber: `H-${Date.now()}`,
+    });
+  }, [open, caseId, reset]);
+
+  /* ---------------- Watchers ---------------- */
+
+  const selectedStatus = useWatch({
+    control,
+    name: "status",
+  });
+
+  /* ---------------- Handlers ---------------- */
+
   const onSubmit = async (data: HearingFormData) => {
-    await createMutation.mutateAsync(data);
-    reset();
-    onOpenChange(false);
+    try {
+      await createMutation.mutateAsync(data);
+      reset();
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Create hearing error:", error);
+    }
   };
 
   const handleClose = () => {
     reset();
     onOpenChange(false);
   };
+
+  /* ---------------- Render ---------------- */
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -86,186 +175,131 @@ export default function HearingCreateDialog({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Case ID (if not provided) */}
+          {/* Case */}
           {!caseId && (
             <div className="space-y-2">
-              <Label htmlFor="case">
-                Case ID <span className="text-status-error">*</span>
-              </Label>
-              <Input
-                id="case"
-                placeholder="Enter case ID or case number"
-                {...register("case")}
-                className={errors.case ? "border-status-error" : ""}
-                disabled={isSubmitting}
+              <Label>Case *</Label>
+              <Controller
+                name="caseId"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <SelectTrigger
+                      className={errors.caseId ? "border-status-error" : ""}
+                    >
+                      <SelectValue placeholder="Select case" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {cases.map((c) => (
+                        <SelectItem key={c._id} value={c._id}>
+                          {c.caseNumber} — {c.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               />
-              {errors.case && (
-                <p className="text-sm text-status-error">
-                  {errors.case.message}
-                </p>
-              )}
-              <p className="text-xs text-text-secondary">
-                Note: In production, this should be a searchable dropdown
-              </p>
             </div>
           )}
 
-          {/* Date & Time Row */}
+          {/* Hearing Number */}
+          <div className="space-y-2">
+            <Label>Hearing Number *</Label>
+            <Input {...register("hearingNumber")} />
+          </div>
+
+          {/* Date & Time */}
           <div className="grid md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="hearingDate">
-                Hearing Date <span className="text-status-error">*</span>
-              </Label>
-              <Input
-                id="hearingDate"
-                type="date"
-                {...register("hearingDate")}
-                className={errors.hearingDate ? "border-status-error" : ""}
-                disabled={isSubmitting}
-              />
-              {errors.hearingDate && (
-                <p className="text-sm text-status-error">
-                  {errors.hearingDate.message}
-                </p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="hearingTime">
-                Hearing Time <span className="text-status-error">*</span>
-              </Label>
-              <Input
-                id="hearingTime"
-                type="time"
-                {...register("hearingTime")}
-                className={errors.hearingTime ? "border-status-error" : ""}
-                disabled={isSubmitting}
-              />
-              {errors.hearingTime && (
-                <p className="text-sm text-status-error">
-                  {errors.hearingTime.message}
-                </p>
-              )}
-            </div>
+            <Input type="date" {...register("hearingDate")} />
+            <Input type="time" {...register("hearingTime")} />
           </div>
 
-          {/* Court Room */}
-          <div className="space-y-2">
-            <Label htmlFor="courtRoom">Court Room (Optional)</Label>
+          {/* Judge & Court Room */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <Controller
+              name="judgeId"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select judge" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {judges.map((j) => (
+                      <SelectItem key={j._id} value={j._id}>
+                        {j.fullName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
             <Input
-              id="courtRoom"
-              placeholder="e.g., Court Room 3"
+              placeholder="Court Room (optional)"
               {...register("courtRoom")}
-              disabled={isSubmitting}
             />
           </div>
 
-          {/* Judge */}
-          <div className="space-y-2">
-            <Label htmlFor="judge">
-              Judge <span className="text-status-error">*</span>
-            </Label>
-            <Input
-              id="judge"
-              placeholder="Enter judge ID or name"
-              {...register("judge")}
-              className={errors.judge ? "border-status-error" : ""}
-              disabled={isSubmitting}
+          {/* Purpose & Status */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <Controller
+              name="purpose"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.values(HearingPurpose).map((p) => (
+                      <SelectItem key={p} value={p}>
+                        {p}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             />
-            {errors.judge && (
-              <p className="text-sm text-status-error">
-                {errors.judge.message}
-              </p>
-            )}
-            <p className="text-xs text-text-secondary">
-              Note: In production, this should be a searchable dropdown
-            </p>
-          </div>
 
-          {/* Status */}
-          <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
-            <Select
-              defaultValue={HearingStatus.SCHEDULED}
-              onValueChange={(value) =>
-                setValue("status", value as HearingStatus)
-              }
-              disabled={isSubmitting}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={HearingStatus.SCHEDULED}>
-                  Scheduled
-                </SelectItem>
-                <SelectItem value={HearingStatus.IN_PROGRESS}>
-                  In Progress
-                </SelectItem>
-                <SelectItem value={HearingStatus.COMPLETED}>
-                  Completed
-                </SelectItem>
-                <SelectItem value={HearingStatus.POSTPONED}>
-                  Postponed
-                </SelectItem>
-                <SelectItem value={HearingStatus.CANCELLED}>
-                  Cancelled
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Purpose */}
-          <div className="space-y-2">
-            <Label htmlFor="purpose">Purpose (Optional)</Label>
-            <Textarea
-              id="purpose"
-              placeholder="Brief description of the hearing purpose..."
-              rows={3}
-              {...register("purpose")}
-              disabled={isSubmitting}
+            <Controller
+              name="status"
+              control={control}
+              render={({ field }) => (
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.values(HearingStatus).map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             />
           </div>
 
-          {/* Remarks */}
-          <div className="space-y-2">
-            <Label htmlFor="remarks">Remarks (Optional)</Label>
-            <Textarea
-              id="remarks"
-              placeholder="Any additional notes..."
-              rows={2}
-              {...register("remarks")}
-              disabled={isSubmitting}
-            />
-          </div>
+          {/* Notes */}
+          <Textarea placeholder="Notes (optional)" {...register("notes")} />
 
-          {/* Next Hearing Date */}
-          <div className="space-y-2">
-            <Label htmlFor="nextHearingDate">
-              Next Hearing Date (Optional)
-            </Label>
-            <Input
-              id="nextHearingDate"
-              type="date"
-              {...register("nextHearingDate")}
-              disabled={isSubmitting}
-            />
-          </div>
+          {/* Adjournment Fields */}
+          {selectedStatus === HearingStatus.ADJOURNED && (
+            <>
+              <Input type="date" {...register("nextHearingDate")} />
+              <Textarea
+                placeholder="Adjournment reason"
+                {...register("adjournmentReason")}
+              />
+            </>
+          )}
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={isSubmitting}
-            >
+            <Button type="button" variant="outline" onClick={handleClose}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              className="bg-brand-primary hover:bg-brand-primary/90"
-              disabled={isSubmitting}
-            >
+            <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Scheduling..." : "Schedule Hearing"}
             </Button>
           </DialogFooter>

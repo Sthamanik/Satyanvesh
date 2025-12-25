@@ -161,35 +161,12 @@ export const casesApi = {
   /**
    * Get case statistics (admin/judge only)
    */
-  getCaseStatistics: async (): Promise<ApiResponse<null>> => {
-    const response = await axiosInstance.get<ApiResponse<null>>(
-      "/cases/statistics"
-    );
-    return response.data;
-  },
-
-  /**
-   * Get public cases (no auth required)
-   */
-  getPublicCases: async (
-    params?: SearchParams
-  ): Promise<ApiResponse<Case[]>> => {
-    const response = await axiosInstance.get<ApiResponse<Case[]>>(
-      "/cases/public",
-      {
-        params,
-      }
-    );
-    return response.data;
-  },
-
-  /**
-   * Get public case by ID (no auth required)
-   */
-  getPublicCaseById: async (id: string): Promise<ApiResponse<Case>> => {
-    const response = await axiosInstance.get<ApiResponse<Case>>(
-      `/cases/public/${id}`
-    );
+  getCaseStatistics: async (): Promise<
+    ApiResponse<Record<string, unknown>>
+  > => {
+    const response = await axiosInstance.get<
+      ApiResponse<Record<string, unknown>>
+    >("/cases/statistics");
     return response.data;
   },
 };

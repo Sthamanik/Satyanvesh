@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   Calendar,
   Clock,
@@ -26,16 +27,27 @@ import {
 import HearingCreateDialog from "@/components/hearings/HearingCreateDialog";
 
 interface CaseHearingsPageProps {
-  caseId: string;
+  caseId?: string;
 }
 
-export default function CaseHearingsPage({ caseId }: CaseHearingsPageProps) {
+export default function CaseHearingsPage({ caseId: propCaseId }: CaseHearingsPageProps = {}) {
+  const { id: routeCaseId } = useParams<{ id: string }>();
+  const caseId = propCaseId || routeCaseId;
+  
   const { isAdmin, isJudge, isClerk } = useUserRole();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedHearingId, setSelectedHearingId] = useState<string | null>(
     null
   );
+
+  if (!caseId) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-text-secondary">Case ID is required</p>
+      </div>
+    );
+  }
 
   const { data, isLoading, error } = useGetCaseHearings(caseId);
   const deleteMutation = useDeleteHearing();

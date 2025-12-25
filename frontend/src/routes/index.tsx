@@ -30,6 +30,14 @@ const PublicCasesPage = lazy(() => import("@/pages/public/PublicCasePage"));
 const PublicCaseDetailPage = lazy(
   () => import("@/pages/public/PublicCaseDetailPage")
 );
+const CaseCreatePage = lazy(() => import("@/pages/cases/CaseCreatePage"));
+const CaseHearingsPage = lazy(
+  () => import("@/pages/hearings/CaseHearingsPage")
+);
+const BookmarksPage = lazy(() => import("@/pages/bookmarks/BookmarksPage"));
+const CaseTypesPage = lazy(() => import("@/pages/caseTypes/CaseTypesPage"));
+const SettingsPage = lazy(() => import("@/pages/settings/SettingsPage"));
+const ProfilePage = lazy(() => import("@/pages/profile/ProfilePage"));
 
 // Loading component
 const PageLoader = () => (
@@ -42,14 +50,14 @@ const PageLoader = () => (
 );
 
 // Placeholder pages for routes (we'll build these later)
-const PlaceholderPage = ({ title }: { title: string }) => (
-  <div className="text-center py-12">
-    <h1 className="text-3xl font-bold text-brand-primary mb-4">{title}</h1>
-    <p className="text-text-secondary">
-      This page will be implemented in the next phase
-    </p>
-  </div>
-);
+// const PlaceholderPage = ({ title }: { title: string }) => (
+//   <div className="text-center py-12">
+//     <h1 className="text-3xl font-bold text-brand-primary mb-4">{title}</h1>
+//     <p className="text-text-secondary">
+//       This page will be implemented in the next phase
+//     </p>
+//   </div>
+// );
 
 /**
  * Main Routes Configuration
@@ -113,7 +121,9 @@ const AppRoutes = () => {
           }
         >
           <Route index element={<CasesListPage />} />
+          <Route path="create" element={<CaseCreatePage />} />
           <Route path=":id" element={<CaseDetailPage />} />
+          <Route path=":id/hearings" element={<CaseHearingsPage />} />
         </Route>
 
         {/* ============================================
@@ -143,7 +153,8 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={<DocumentsPage caseId="" />} />
+          <Route index element={<Navigate to="/cases" replace />} />
+          <Route path=":id" element={<DocumentsPage />} />
         </Route>
 
         {/* ============================================
@@ -189,7 +200,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={<PlaceholderPage title="My Bookmarks" />} />
+          <Route index element={<BookmarksPage />} />
         </Route>
 
         {/* ============================================
@@ -234,7 +245,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={<PlaceholderPage title="Settings" />} />
+          <Route index element={<SettingsPage />} />
         </Route>
 
         <Route
@@ -245,7 +256,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={<PlaceholderPage title="Profile" />} />
+          <Route index element={<ProfilePage />} />
         </Route>
 
         {/* ============================================
@@ -260,7 +271,7 @@ const AppRoutes = () => {
             </ProtectedRoute>
           }
         >
-          <Route index element={<PlaceholderPage title="Case Types" />} />
+          <Route index element={<CaseTypesPage />} />
         </Route>
 
         {/* ============================================

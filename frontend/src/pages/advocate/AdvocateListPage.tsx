@@ -69,9 +69,6 @@ export default function AdvocatesListPage() {
                       <h3 className="font-semibold">
                         {user?.fullName ?? "Unknown Advocate"}
                       </h3>
-                      <p className="text-sm text-gray-500">
-                        Bar No: {adv.barRegistrationNumber}
-                      </p>
                     </div>
                   </div>
 

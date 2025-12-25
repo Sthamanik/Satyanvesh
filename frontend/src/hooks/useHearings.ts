@@ -10,33 +10,6 @@ const toQueryParams = (
 ): Record<string, unknown> | undefined => (params ? { ...params } : undefined);
 
 /**
- * Hook to get all hearings with error handling
- */
-export const useGetHearings = (params?: SearchParams) => {
-  return useQuery({
-    queryKey: queryKeys.hearings.all(toQueryParams(params)),
-    queryFn: async () => {
-      try {
-        return await hearingsApi.getAllHearings(params);
-      } catch (error) {
-        // Log error for debugging
-        console.error("Failed to fetch hearings:", error);
-        throw error;
-      }
-    },
-    retry: (failureCount, error) => {
-      // Don't retry on 404 (endpoint not found)
-      if (error instanceof Error && error.message.includes("404")) {
-        return false;
-      }
-      // Retry up to 2 times for other errors
-      return failureCount < 2;
-    },
-    placeholderData: (previousData) => previousData,
-  });
-};
-
-/**
  * Hook to get case hearings
  */
 export const useGetCaseHearings = (caseId: string) => {
