@@ -16,3 +16,6 @@ npm-debug.log*
 
 #dataSeed
 scripts/
+
+# Test files
+tests/

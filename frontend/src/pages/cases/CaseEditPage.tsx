@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-
+import { cn } from "@/lib/utils";
 import { CaseStatus, CasePriority, CaseStage } from "@/types/api.types";
 
 // Schema for editing (same as create but with verdict)
@@ -37,7 +37,15 @@ const caseEditSchema = z.object({
   isPublic: z.boolean(),
   isSensitive: z.boolean(),
   verdict: z.string().optional(),
-  nextHearingDate: z.string().optional(), // Date string from input type="date"
+  nextHearingDate: z.string().optional(),
+}).refine((data) => {
+  if ((data.status === CaseStatus.JUDGMENT || data.status === CaseStatus.CLOSED) && (!data.verdict || data.verdict.trim() === "")) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Verdict is required when case is assigned to Judgment or Closed",
+  path: ["verdict"],
 });
 
 type CaseEditFormData = z.infer<typeof caseEditSchema>;
@@ -73,6 +81,7 @@ export default function CaseEditPage() {
     control,
     reset,
     watch,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<CaseEditFormData>({
     resolver: zodResolver(caseEditSchema),
@@ -84,7 +93,16 @@ export default function CaseEditPage() {
 
   // Watch status to conditionally show verdict field
   const status = watch("status");
+  const verdict = watch("verdict");
   const isClosed = status === CaseStatus.JUDGMENT || status === CaseStatus.CLOSED;
+  const isVerdictPreviouslySet = !!caseData?.verdict;
+
+  // Auto-close if verdict is being typed
+  useEffect(() => {
+    if (verdict && verdict.trim().length > 0 && status !== CaseStatus.CLOSED && status !== CaseStatus.JUDGMENT && !isVerdictPreviouslySet) {
+      setValue("status", CaseStatus.CLOSED);
+    }
+  }, [verdict, status, setValue, isVerdictPreviouslySet]);
 
   // Populate form when data loads
   useEffect(() => {
@@ -251,11 +269,17 @@ export default function CaseEditPage() {
                         <SelectValue placeholder="Select Status" />
                       </SelectTrigger>
                       <SelectContent>
-                        {Object.values(CaseStatus).map((s) => (
-                          <SelectItem key={s} value={s} className="capitalize">
-                            {s.replace("_", " ")}
-                          </SelectItem>
-                        ))}
+                        {Object.values(CaseStatus).map((s) => {
+                          // If verdict is set, disable non-final statuses
+                          const isFinal = s === CaseStatus.JUDGMENT || s === CaseStatus.CLOSED || s === CaseStatus.ARCHIVED;
+                          const isDisabled = isVerdictPreviouslySet && !isFinal;
+                          
+                          return (
+                            <SelectItem key={s} value={s} className="capitalize" disabled={isDisabled}>
+                              {s.replace("_", " ")}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   )}
@@ -318,21 +342,35 @@ export default function CaseEditPage() {
               </div>
 
             {/* Verdict (Conditional) */}
-            {isClosed && (
-              <div className="space-y-2 border-l-4 border-brand-primary pl-4 py-2 bg-brand-primary/5 rounded-r">
-                <Label htmlFor="verdict" className="text-brand-primary font-bold">
-                  Final Verdict / Judgment Summary
+            {(isClosed || (verdict && verdict.length > 0)) && (
+              <div className={cn(
+                "space-y-2 border-l-4 pl-4 py-2 rounded-r",
+                isVerdictPreviouslySet ? "border-amber-500 bg-amber-50" : "border-brand-primary bg-brand-primary/5"
+              )}>
+                <Label htmlFor="verdict" className={cn("font-bold", isVerdictPreviouslySet ? "text-amber-700" : "text-brand-primary")}>
+                  {isVerdictPreviouslySet ? "Final Verdict (Locked)" : "Final Verdict / Judgment Summary"}
                 </Label>
                 <Textarea
                   id="verdict"
                   rows={6}
                   placeholder="Enter the final verdict or summary of the judgment..."
                   {...register("verdict")}
-                  className="font-mono text-sm"
+                  disabled={isVerdictPreviouslySet}
+                  className={cn(
+                    "font-mono text-sm",
+                    isVerdictPreviouslySet ? "bg-white opacity-100 cursor-not-allowed border-amber-200" : ""
+                  )}
                 />
                 <p className="text-xs text-text-secondary">
-                  Required when status is Judgment or Closed.
+                  {isVerdictPreviouslySet 
+                    ? "This verdict has been finalized and cannot be modified." 
+                    : "Required when status is Judgment or Closed. Entering a verdict will automatically set status to Closed."}
                 </p>
+                {errors.verdict && (
+                  <p className="text-sm text-status-error font-medium">
+                    {errors.verdict.message}
+                  </p>
+                )}
               </div>
             )}
 

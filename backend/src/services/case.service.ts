@@ -223,7 +223,29 @@ class CaseService {
 
   // Update case
   async updateCase(caseId: string, data: UpdateCaseData) {
-    const caseData = await caseModel
+    const existingCase = await caseModel.findById(caseId);
+
+    if (!existingCase) {
+      throw new ApiError(404, "Case not found");
+    }
+
+    // 1. Write-Once Protection: If verdict exists, prevent modification
+    if (existingCase.verdict && data.verdict && existingCase.verdict !== data.verdict) {
+      throw new ApiError(400, "Verdict is finalized and cannot be modified.");
+    }
+
+    // 2. State Locking: If case has a verdict, prevent moving back to early stages
+    const finalStatuses = ["judgment", "closed", "archived"];
+    if (existingCase.verdict && data.status && !finalStatuses.includes(data.status)) {
+      throw new ApiError(400, `Case is already finalized with a verdict. Status cannot be changed back to ${data.status}.`);
+    }
+
+    // 3. Auto-Close: If verdict is being provided for the first time, ensure status is 'closed'
+    if (!existingCase.verdict && data.verdict) {
+      data.status = "closed";
+    }
+
+    const updatedCase = await caseModel
       .findByIdAndUpdate(
         caseId,
         { $set: data },
@@ -233,11 +255,7 @@ class CaseService {
       .populate("courtId", "name code type city state")
       .populate("filedBy", "fullName username email role");
 
-    if (!caseData) {
-      throw new ApiError(404, "Case not found");
-    }
-
-    return caseData;
+    return updatedCase;
   }
 
   // Update case status
@@ -254,6 +272,12 @@ class CaseService {
     }
 
     const oldStatus = caseData.status;
+
+    // State Locking: If case already has a verdict, prevent moving back to early stages
+    const finalStatuses = ["judgment", "closed", "archived"];
+    if (caseData.verdict && !finalStatuses.includes(status)) {
+      throw new ApiError(400, `Case is already finalized with a verdict. Status cannot be changed back to ${status}.`);
+    }
 
     const updateData: any = { status };
 
