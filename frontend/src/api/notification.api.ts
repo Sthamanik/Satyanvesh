@@ -15,7 +15,6 @@ export const notificationApi = {
   getNotifications: async (): Promise<ApiResponse<Notification[]>> => {
     try {
       const response = await axiosInstance.get("/notifications");
-      console.log("Notifications response:", response.data);
       return response.data;
     } catch (error: any) {
       console.error("Error fetching notifications:", error.response?.data || error.message);

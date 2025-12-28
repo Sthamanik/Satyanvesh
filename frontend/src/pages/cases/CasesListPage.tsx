@@ -43,7 +43,6 @@ export default function CasesListPage() {
   });
 
   // Safely extract cases array
-  console.log('Cases Debug Data:', data);
   const cases = data?.data?.cases || [];
   const totalPages = data?.data?.pagination?.totalPages || 1;
 

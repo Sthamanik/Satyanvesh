@@ -86,8 +86,17 @@ export default function CaseEditPage() {
   } = useForm<CaseEditFormData>({
     resolver: zodResolver(caseEditSchema),
     defaultValues: {
+      title: "",
+      description: "",
+      caseTypeId: "",
+      courtId: "",
+      status: CaseStatus.FILED,
+      priority: CasePriority.NORMAL,
+      stage: CaseStage.PRELIMINARY,
       isPublic: true,
       isSensitive: false,
+      verdict: "",
+      nextHearingDate: "",
     },
   });
 
@@ -355,10 +364,10 @@ export default function CaseEditPage() {
                   rows={6}
                   placeholder="Enter the final verdict or summary of the judgment..."
                   {...register("verdict")}
-                  disabled={isVerdictPreviouslySet}
+                  readOnly={isVerdictPreviouslySet}
                   className={cn(
                     "font-mono text-sm",
-                    isVerdictPreviouslySet ? "bg-white opacity-100 cursor-not-allowed border-amber-200" : ""
+                    isVerdictPreviouslySet ? "bg-muted opacity-80 cursor-not-allowed border-amber-200" : ""
                   )}
                 />
                 <p className="text-xs text-text-secondary">
