@@ -9,7 +9,13 @@ export const useNotifications = () => {
     queryKey: ["notifications"],
     queryFn: () => notificationApi.getNotifications(),
     refetchInterval: 30000, // Poll every 30 seconds
+    retry: 2,
   });
+
+  // Log errors if they occur
+  if (notificationsQuery.error) {
+    console.error("Failed to fetch notifications:", notificationsQuery.error);
+  }
 
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => notificationApi.markAsRead(id),

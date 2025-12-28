@@ -1,7 +1,9 @@
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import morgan from "morgan";
 import errorHandler from "@middlewares/errorHandler.middleware.js";
+import { stream } from "./utils/logger.util.js";
 
 const app = express();
 
@@ -16,6 +18,9 @@ app.use(
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 app.use(cookieParser());
+
+// HTTP request logging
+app.use(morgan("combined", { stream }));
 
 // Routes imports
 import authRoute from "@routes/auth.route.js";

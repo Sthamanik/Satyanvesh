@@ -36,6 +36,10 @@ router.get("/search", searchLimiter, searchCases);
 
 router.get("/", readLimiter, validate(getAllCasesSchema), getAllCases);
 
+router.use(verifyJWT);
+
+router.get("/my-cases", getMyCases);
+
 router.get("/slug/:slug", readLimiter, validate(getCaseBySlugSchema), getCaseBySlug);
 
 router.get(
@@ -59,9 +63,6 @@ router.get(
 router.get("/:id", readLimiter, validate(getCaseByIdSchema), getCaseById);
 
 // Admin/Judge/Clerk routes
-router.use(verifyJWT);
-
-router.get("/my-cases", getMyCases);
 
 router.post(
   "/",

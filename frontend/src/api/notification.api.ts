@@ -13,8 +13,14 @@ export interface Notification {
 
 export const notificationApi = {
   getNotifications: async (): Promise<ApiResponse<Notification[]>> => {
-    const response = await axiosInstance.get("/notifications");
-    return response.data;
+    try {
+      const response = await axiosInstance.get("/notifications");
+      console.log("Notifications response:", response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error("Error fetching notifications:", error.response?.data || error.message);
+      throw error;
+    }
   },
 
   markAsRead: async (id: string): Promise<ApiResponse<Notification>> => {

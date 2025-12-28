@@ -3,14 +3,19 @@ import Notification from "../models/notification.model.js";
 import { asyncHandler } from "@utils/asyncHandler.util.js";
 import { ApiResponse } from "@utils/apiResponse.util.js";
 import { ApiError } from "@utils/apiError.util.js";
+import logger from "../utils/logger.util.js";
 
 /**
  * Get notifications for the logged-in user
  */
 export const getMyNotifications = asyncHandler(async (req: Request, res: Response) => {
+  logger.debug(`Fetching notifications for user: ${req.user?._id}`);
+  
   const notifications = await Notification.find({ recipientId: req.user?._id })
     .sort({ createdAt: -1 })
     .limit(50);
+
+  logger.info(`Found ${notifications.length} notifications for user: ${req.user?._id}`);
 
   res
     .status(200)

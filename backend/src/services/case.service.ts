@@ -476,76 +476,74 @@ class CaseService {
 
   // Get cases for a specific user based on their role and assignments
   async getMyCases(userId: string, role: string, query: GetAllCasesQuery) {
-    const { page = "1", limit = "10" } = query;
-    const skip = (Number(page) - 1) * Number(limit);
-    
-    let caseIds: any[] = [];
+    try {
+      const { page = "1", limit = "10" } = query;
+      const skip = (Number(page) - 1) * Number(limit);
+      
+      let caseIds: any[] = [];
 
-    if (role === "admin") {
-      // Admins see everything, but maybe this method is specifically for "assigned" cases
-      // For now, let's just return all cases for admin if they use this endpoint
-      return this.getAllCases(query);
-    } else if (role === "judge") {
-      // Find cases where this user is assigned as a judge in hearings
-      const hearings = await hearingModel.find({ judgeId: userId }).select("caseId");
-      caseIds = [...new Set(hearings.map(h => h.caseId.toString()))];
-    } else if (role === "lawyer") {
-      // Find the advocateId associated with this user
-      const advocate = await advocateModel.findOne({ userId });
-      if (advocate) {
-        // Find cases where this advocate is assigned to a party
-        const parties = await casePartyModel.find({ advocateId: advocate._id }).select("caseId");
-        caseIds = [...new Set(parties.map(p => p.caseId.toString()))];
+      if (role === "admin") {
+        return await this.getAllCases(query);
+      } else if (role === "judge") {
+        const hearings = await hearingModel.find({ judgeId: userId }).select("caseId");
+        caseIds = [...new Set(hearings.filter(h => h.caseId).map(h => h.caseId.toString()))];
+      } else if (role === "lawyer") {
+        const advocate = await advocateModel.findOne({ userId });
+        if (advocate) {
+          const parties = await casePartyModel.find({ advocateId: advocate._id }).select("caseId");
+          caseIds = [...new Set(parties.filter(p => p.caseId).map(p => p.caseId.toString()))];
+        }
+      } else if (role === "litigant" || role === "public") {
+        const parties = await casePartyModel.find({ userId }).select("caseId");
+        caseIds = [...new Set(parties.filter(p => p.caseId).map(p => p.caseId.toString()))];
       }
-    } else if (role === "litigant" || role === "public") {
-      // Find cases where this user is a party
-      const parties = await casePartyModel.find({ userId }).select("caseId");
-      caseIds = [...new Set(parties.map(p => p.caseId.toString()))];
-    }
 
-    if (caseIds.length === 0 && role !== "admin") {
+      if (caseIds.length === 0 && role !== "admin") {
+        return {
+          cases: [],
+          pagination: {
+            page: Number(page),
+            limit: Number(limit),
+            total: 0,
+            totalPages: 0,
+          },
+        };
+      }
+
+      const filter: any = { _id: { $in: caseIds } };
+      
+      if (query.status) filter.status = query.status;
+      if (query.search) {
+        filter.$or = [
+          { title: { $regex: query.search, $options: "i" } },
+          { description: { $regex: query.search, $options: "i" } },
+          { caseNumber: { $regex: query.search, $options: "i" } },
+        ];
+      }
+
+      const cases = await caseModel
+        .find(filter)
+        .populate("caseTypeId", "name code category")
+        .populate("courtId", "name code type city state")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit));
+
+      const total = await caseModel.countDocuments(filter);
+
       return {
-        cases: [],
+        cases,
         pagination: {
           page: Number(page),
           limit: Number(limit),
-          total: 0,
-          totalPages: 0,
+          total,
+          totalPages: Math.ceil(total / Number(limit)),
         },
       };
+    } catch (error: any) {
+      console.error("Error in getMyCases service:", error);
+      throw new ApiError(500, error.message || "Failed to fetch your cases");
     }
-
-    const filter: any = { _id: { $in: caseIds } };
-    
-    // Apply additional filters from query if needed
-    if (query.status) filter.status = query.status;
-    if (query.search) {
-      filter.$or = [
-        { title: { $regex: query.search, $options: "i" } },
-        { description: { $regex: query.search, $options: "i" } },
-        { caseNumber: { $regex: query.search, $options: "i" } },
-      ];
-    }
-
-    const cases = await caseModel
-      .find(filter)
-      .populate("caseTypeId", "name code category")
-      .populate("courtId", "name code type city state")
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(Number(limit));
-
-    const total = await caseModel.countDocuments(filter);
-
-    return {
-      cases,
-      pagination: {
-        page: Number(page),
-        limit: Number(limit),
-        total,
-        totalPages: Math.ceil(total / Number(limit)),
-      },
-    };
   }
 }
 
