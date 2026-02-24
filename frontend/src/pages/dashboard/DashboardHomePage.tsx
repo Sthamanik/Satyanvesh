@@ -1,7 +1,20 @@
 import { Briefcase, Calendar, FileText, Gavel } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts";
-import { useUser } from "@/stores/auth.store";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip as RechartsTooltip,
+  Legend,
+} from "recharts";
+import { useUser } from "@/routes/stores/auth.store";
 import { useQuery } from "@tanstack/react-query";
 import { casesApi } from "@/api/cases.api";
 import { hearingsApi } from "@/api/hearings.api";
@@ -92,25 +105,25 @@ const fetchDashboardStats = async (): Promise<DashboardStats> => {
   // Properly type the cases data extraction
   let cases: Case[] = [];
   const rawCasesData = casesRes.data;
-  
+
   if (Array.isArray(rawCasesData)) {
     cases = rawCasesData as Case[];
   } else if (
-    typeof rawCasesData === "object" && 
-    rawCasesData !== null && 
-    "cases" in rawCasesData && 
+    typeof rawCasesData === "object" &&
+    rawCasesData !== null &&
+    "cases" in rawCasesData &&
     Array.isArray((rawCasesData as { cases: unknown[] }).cases)
   ) {
     cases = (rawCasesData as { cases: Case[] }).cases;
   }
 
-  const upcomingHearings = (Array.isArray(upcomingHearingsRes.data) 
-    ? upcomingHearingsRes.data 
-    : []) as Hearing[];
-    
-  const todaysHearings = (Array.isArray(todaysHearingsRes.data) 
-    ? todaysHearingsRes.data 
-    : []) as Hearing[];
+  const upcomingHearings = (
+    Array.isArray(upcomingHearingsRes.data) ? upcomingHearingsRes.data : []
+  ) as Hearing[];
+
+  const todaysHearings = (
+    Array.isArray(todaysHearingsRes.data) ? todaysHearingsRes.data : []
+  ) as Hearing[];
 
   const allHearings = [...upcomingHearings, ...todaysHearings];
   const totalCases = cases.length;
@@ -152,7 +165,10 @@ const fetchDashboardStats = async (): Promise<DashboardStats> => {
   let documents = 0;
   try {
     const documentsRes = await documentsApi.getDocumentStatistics();
-    if (documentsRes.data && typeof documentsRes.data.totalDocuments === 'number') {
+    if (
+      documentsRes.data &&
+      typeof documentsRes.data.totalDocuments === "number"
+    ) {
       documents = documentsRes.data.totalDocuments;
     }
   } catch (error) {
@@ -353,11 +369,13 @@ export default function DashboardHomePage() {
         <Card className="col-span-1 md:col-span-1">
           <CardHeader>
             <CardTitle>Case Status Distribution</CardTitle>
-            <CardDescription>Breakdown of cases by current status</CardDescription>
+            <CardDescription>
+              Breakdown of cases by current status
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-               <div className="h-[300px] w-full bg-muted/20 animate-pulse rounded" />
+              <div className="h-[300px] w-full bg-muted/20 animate-pulse rounded" />
             ) : stats?.totalCases ? (
               <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
@@ -377,12 +395,16 @@ export default function DashboardHomePage() {
                       paddingAngle={5}
                       dataKey="value"
                     >
-                      {Object.keys(stats.statusBreakdown || {}).map((key, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={COLORS[key as keyof typeof COLORS] || "#8884d8"} 
-                        />
-                      ))}
+                      {Object.keys(stats.statusBreakdown || {}).map(
+                        (key, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={
+                              COLORS[key as keyof typeof COLORS] || "#8884d8"
+                            }
+                          />
+                        )
+                      )}
                     </Pie>
                     <RechartsTooltip />
                     <Legend />
@@ -399,27 +421,38 @@ export default function DashboardHomePage() {
 
         {/* Detailed Breakdown Table */}
         <Card className="col-span-1 md:col-span-2">
-           <CardHeader>
+          <CardHeader>
             <CardTitle>Status details</CardTitle>
-            <CardDescription>Detailed count of cases in each stage</CardDescription>
+            <CardDescription>
+              Detailed count of cases in each stage
+            </CardDescription>
           </CardHeader>
           <CardContent>
-             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-               {Object.entries(COLORS).map(([status, color]) => {
-                 const count = stats?.statusBreakdown?.[status as CaseStatus] || 0;
-                 return (
-                   <div key={status} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }} />
-                      <div>
-                        <p className="text-sm font-medium capitalize text-foreground">
-                          {status.replace("_", " ")}
-                        </p>
-                        <p className="text-2xl font-bold text-foreground">{count}</p>
-                      </div>
-                   </div>
-                 );
-               })}
-             </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {Object.entries(COLORS).map(([status, color]) => {
+                const count =
+                  stats?.statusBreakdown?.[status as CaseStatus] || 0;
+                return (
+                  <div
+                    key={status}
+                    className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: color }}
+                    />
+                    <div>
+                      <p className="text-sm font-medium capitalize text-foreground">
+                        {status.replace("_", " ")}
+                      </p>
+                      <p className="text-2xl font-bold text-foreground">
+                        {count}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       </div>

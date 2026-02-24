@@ -1,7 +1,7 @@
 import { Menu, Search, LogOut, User, Settings } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
-import { useUser } from "@/stores/auth.store";
+import { useUser } from "@/routes/stores/auth.store";
 import { useLogout } from "@/hooks/useAuth";
 import { getInitials } from "@/lib/utils";
 import {

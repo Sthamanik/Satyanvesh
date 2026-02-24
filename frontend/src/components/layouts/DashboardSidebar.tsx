@@ -15,7 +15,7 @@ import {
   UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useUser } from "@/stores/auth.store";
+import { useUser } from "@/routes/stores/auth.store";
 import { Button } from "@/components/ui/button";
 
 interface DashboardSidebarProps {

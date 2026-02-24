@@ -1,11 +1,19 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Scale, Search, TrendingUp, Eye, FileText, Building2, Users } from "lucide-react";
+import {
+  Scale,
+  Search,
+  TrendingUp,
+  Eye,
+  FileText,
+  Building2,
+  Users,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import axiosInstance from "@/lib/axios";
-import { useAuthStore } from "@/stores/auth.store";
+import { useAuthStore } from "@/routes/stores/auth.store";
 import { useLogout } from "@/hooks/useAuth";
 import {
   DropdownMenu,
@@ -33,9 +41,18 @@ export default function HomePage() {
       ]);
 
       return {
-        totalCases: casesRes.status === "fulfilled" ? casesRes.value.data?.data?.pagination?.total || 0 : 0,
-        totalCourts: courtsRes.status === "fulfilled" ? courtsRes.value.data?.data?.pagination?.total || 0 : 0,
-        totalAdvocates: advocatesRes.status === "fulfilled" ? advocatesRes.value.data?.data?.pagination?.total || 0 : 0,
+        totalCases:
+          casesRes.status === "fulfilled"
+            ? casesRes.value.data?.data?.pagination?.total || 0
+            : 0,
+        totalCourts:
+          courtsRes.status === "fulfilled"
+            ? courtsRes.value.data?.data?.pagination?.total || 0
+            : 0,
+        totalAdvocates:
+          advocatesRes.status === "fulfilled"
+            ? advocatesRes.value.data?.data?.pagination?.total || 0
+            : 0,
       };
     },
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes
@@ -80,7 +97,10 @@ export default function HomePage() {
               {isAuthenticated && user ? (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="flex items-center gap-2 h-auto py-2 px-3">
+                    <Button
+                      variant="ghost"
+                      className="flex items-center gap-2 h-auto py-2 px-3"
+                    >
                       <Avatar className="h-8 w-8">
                         <AvatarFallback className="bg-brand-primary text-white text-sm">
                           {getUserInitials(user.fullName || user.username)}
@@ -99,7 +119,9 @@ export default function HomePage() {
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel className="font-normal">
                       <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{user.fullName}</p>
+                        <p className="text-sm font-medium leading-none">
+                          {user.fullName}
+                        </p>
                         <p className="text-xs leading-none text-muted-foreground">
                           {user.email}
                         </p>
@@ -146,7 +168,7 @@ export default function HomePage() {
             <br />
             <span className="text-brand-secondary">Made Simple</span>
           </h1>
-          
+
           {/* Nepali Motto */}
           <p className="text-2xl font-semibold text-brand-accent mb-6">
             "न्यायको दस्तावेज, सत्यको गवाही।"
@@ -291,7 +313,8 @@ export default function HomePage() {
               Ready to Get Started?
             </h2>
             <p className="text-xl text-white/80 mb-8">
-              Join Satyanvesh today and access transparent judiciary information.
+              Join Satyanvesh today and access transparent judiciary
+              information.
             </p>
             <Link to="/register">
               <Button
@@ -309,7 +332,8 @@ export default function HomePage() {
       <footer className="bg-white border-t border-background-secondary py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center text-text-secondary">
           <p className="mb-2">
-            "न्यायको दस्तावेज, सत्यको गवाही।" - Record of justice, testimony of truth
+            "न्यायको दस्तावेज, सत्यको गवाही।" - Record of justice, testimony of
+            truth
           </p>
           <p>
             &copy; {new Date().getFullYear()} Satyanvesh. All rights reserved.

@@ -7,7 +7,7 @@ import {
   type RegisterPayload,
   type ChangePasswordPayload,
 } from "@/api/auth.api";
-import { useAuthStore } from "@/stores/auth.store";
+import { useAuthStore } from "@/routes/stores/auth.store";
 import { queryKeys } from "@/lib/react-query";
 import type { AxiosError } from "axios";
 import type { ApiResponse, User } from "@/types/api.types";
@@ -103,7 +103,7 @@ export const useLogout = () => {
 export const useCurrentUser = () => {
   const { isAuthenticated, setUser, clearAuth } = useAuthStore();
 
-  const query =  useQuery<ApiResponse<User>, AxiosError>({
+  const query = useQuery<ApiResponse<User>, AxiosError>({
     queryKey: queryKeys.auth.me,
     queryFn: () => authApi.getCurrentUser(),
     enabled: isAuthenticated, // Only fetch if authenticated
